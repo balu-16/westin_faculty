@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+
+  --color-primary: #3ba7f2;
+  --color-primary-dark: #168be5;
+  --color-primary-light: #eaf6ff;
+  --color-primary-lighter: #f5faff;
+  --color-page: #f8fbfe;
+  --color-ink: #14213d;
+  --color-ink-soft: #52627a;
+  --color-line: #e5edf5;
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  --shadow-card: 0 2px 10px rgba(20, 33, 61, 0.04);
+  --shadow-card-hover: 0 10px 24px rgba(59, 167, 242, 0.12);
+
+  --animate-fade-in: fade-in 0.25s ease-out both;
+  --animate-slide-in: slide-in 0.2s ease-out both;
+  --animate-fade-in-up: fade-in-up 0.35s ease-out both;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-drift: drift 22s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 18s ease-in-out infinite alternate;
+  --animate-fall-settle: fall-settle 12s linear forwards;
+  --animate-sway: sway 3.6s ease-in-out infinite alternate;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-in {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes drift {
+    from {
+      transform: translateX(-14px);
+    }
+    to {
+      transform: translateX(26px);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 0% 50%;
+    }
+    to {
+      background-position: 100% 50%;
+    }
+  }
+  @keyframes fall-settle {
+    0% {
+      transform: translate(var(--settle-x, 0px), -90px);
+      opacity: 0;
+    }
+    5% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--settle-x, 0px), var(--settle-y, 82vh));
+      opacity: 1;
+    }
+  }
+  @keyframes sway {
+    from {
+      transform: translateX(-14px) rotate(-8deg);
+    }
+    to {
+      transform: translateX(14px) rotate(8deg);
+    }
+  }
+}
+
+body {
+  @apply bg-page font-sans text-ink antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Keyboard focus ring consistent with brand */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+::selection {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+}
+
+/* Thin, subtle scrollbar for scrollable panes */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/* Respect reduced-motion: entrance animations resolve instantly, loops stop */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
