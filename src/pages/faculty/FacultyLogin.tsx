@@ -6,6 +6,7 @@ export function FacultyLogin() {
 
   return (
     <LoginScreen
+      activePortal="faculty"
       portalName="Faculty Portal"
       heading="Faculty Login"
       welcomeMessage="Sign in to access your Westin College teaching dashboard — timetable, attendance, materials and daily reports."

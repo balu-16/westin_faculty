@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '')
+
+/** Build an API URL without duplicating /api across portal callers. */
+export function apiUrl(path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  const apiPath = normalizedPath === '/api' || normalizedPath.startsWith('/api/')
+    ? normalizedPath
+    : `/api${normalizedPath}`
+  return `${API_BASE_URL}${apiPath}`
+}
+
 /* ---------- Sessions ---------- */
 
 export type SessionKey = 'faculty-portal.session' | 'admin-portal.session'
@@ -99,7 +110,7 @@ function tryRefresh(key: SessionKey): Promise<boolean> {
       const session = readSession(key)
       if (!session?.refreshToken) return false
       try {
-        const res = await fetch('/api/auth/refresh', {
+        const res = await fetch(apiUrl('/api/auth/refresh'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken: session.refreshToken }),
@@ -127,7 +138,7 @@ async function request<T>(path: string, options: ApiFetchOptions, allowRefresh: 
   const session = options.sessionKey ? readSession(options.sessionKey) : null
   if (session) headers.Authorization = `Bearer ${session.accessToken}`
 
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method: options.method ?? 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,

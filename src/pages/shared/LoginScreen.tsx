@@ -36,8 +36,11 @@ function maskIdentifier(value: string): string {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
+type PortalRole = 'faculty' | 'admin'
 
 interface LoginScreenProps {
+  /** Portal selected by the current route; the tabs navigate between portals. */
+  activePortal: PortalRole
   /** Small label above the heading, e.g. "Faculty Portal" */
   portalName: string
   /** Card heading, e.g. "Faculty Login" */
@@ -60,6 +63,7 @@ interface LoginScreenProps {
  * Step 1 asks for the ID, Step 2 verifies the 6-digit code emailed by the API.
  */
 export function LoginScreen({
+  activePortal,
   portalName,
   heading,
   welcomeMessage,
@@ -252,6 +256,32 @@ export function LoginScreen({
         />
         <div className="relative w-full max-w-md animate-fade-in-up">
           <div className="rounded-[20px] border border-line bg-white p-7 shadow-[0_8px_30px_rgba(20,33,61,0.06)] sm:p-9">
+            <div
+              className="mb-7 grid grid-cols-2 rounded-xl bg-primary-lighter/70 p-1"
+              role="tablist"
+              aria-label="Choose portal"
+            >
+              {(['faculty', 'admin'] as const).map((portal) => {
+                const selected = activePortal === portal
+                return (
+                  <button
+                    key={portal}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => navigate(`/${portal}/login`)}
+                    className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition-colors ${
+                      selected
+                        ? 'bg-white text-primary-dark shadow-sm'
+                        : 'text-ink-soft hover:text-ink'
+                    }`}
+                  >
+                    {portal}
+                  </button>
+                )
+              })}
+            </div>
+
             <div className="mb-8 flex flex-col items-center text-center">
               <picture>
                 <source srcSet={westinLogoAvif} type="image/avif" />

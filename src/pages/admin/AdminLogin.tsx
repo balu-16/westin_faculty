@@ -6,6 +6,7 @@ export function AdminLogin() {
 
   return (
     <LoginScreen
+      activePortal="admin"
       portalName="Admin Portal"
       heading="Admin Login"
       welcomeMessage="Sign in to access the Westin College administration dashboard — faculty, students, events and reports."
