@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Monitor, Plus, Search, Users } from 'lucide-react'
+import { Monitor, Pencil, Plus, Search, Users } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
@@ -12,7 +12,7 @@ import { SelectField, TextField } from '../../components/FormFields'
 import { SkeletonRows } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
-import { apiFetch, useApi } from '../../lib/api'
+import { ApiError, apiFetch, useApi } from '../../lib/api'
 import {
   mapLoginLog,
   mapTeacher,
@@ -80,7 +80,13 @@ function LoginLogsTable({
 
 /** Memoized faculty table row — re-renders only when its own record changes,
  *  not on every keystroke of the (client-side) search filter. */
-const TeacherTableRow = memo(function TeacherTableRow({ teacher }: { teacher: TeacherRow }) {
+const TeacherTableRow = memo(function TeacherTableRow({
+  teacher,
+  onEdit,
+}: {
+  teacher: TeacherRow
+  onEdit: (teacher: TeacherRow) => void
+}) {
   return (
     <tr className="border-b border-line/70 transition-colors duration-150 last:border-0 hover:bg-primary-lighter/60">
       <td className="px-6 py-3.5">
@@ -108,6 +114,18 @@ const TeacherTableRow = memo(function TeacherTableRow({ teacher }: { teacher: Te
       </td>
       <td className="px-6 py-3.5">
         <StatusBadge status={teacher.status} />
+      </td>
+      <td className="px-6 py-3.5">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => onEdit(teacher)}
+            aria-label={`Edit ${teacher.name}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:bg-primary-light hover:text-primary-dark"
+          >
+            <Pencil size={14} aria-hidden="true" />
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -159,6 +177,24 @@ export function AdminTeachers() {
     subjects?: string
   }>({})
 
+  // Edit state
+  const [editingTeacher, setEditingTeacher] = useState<TeacherRow | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editDepartment, setEditDepartment] = useState('')
+  const [editDesignation, setEditDesignation] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editSubjectIds, setEditSubjectIds] = useState<string[]>([])
+  const [editStatus, setEditStatus] = useState<'active' | 'inactive'>('active')
+  const [editErrors, setEditErrors] = useState<{
+    name?: string
+    email?: string
+    department?: string
+    designation?: string
+    subjects?: string
+  }>({})
+  const [savingEdit, setSavingEdit] = useState(false)
+
   const filtered = rows.filter(
     (t) =>
       t.name.toLowerCase().includes(query.trim().toLowerCase()) ||
@@ -176,9 +212,32 @@ export function AdminTeachers() {
     setModalOpen(true)
   }
 
+  const openEdit = (teacher: TeacherRow) => {
+    setEditingTeacher(teacher)
+    setEditName(teacher.name)
+    setEditEmail(teacher.email)
+    setEditDepartment(teacher.department === '—' ? '' : teacher.department)
+    setEditDesignation(teacher.designation === '—' ? '' : teacher.designation)
+    setEditPhone(teacher.phone === '—' ? '' : teacher.phone)
+    setEditStatus(teacher.status)
+    // Map subject codes to ids using the subjects directory
+    const ids = subjects
+      .filter((s) => teacher.subjects.includes(s.code))
+      .map((s) => s.id)
+    setEditSubjectIds(ids)
+    setEditErrors({})
+  }
+
+  const closeEdit = () => setEditingTeacher(null)
+
   const toggleSubject = (id: string) => {
     setSubjectIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]))
     setErrors((prev) => ({ ...prev, subjects: undefined }))
+  }
+
+  const toggleEditSubject = (id: string) => {
+    setEditSubjectIds((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]))
+    setEditErrors((prev) => ({ ...prev, subjects: undefined }))
   }
 
   const handleAdd = async (e: FormEvent) => {
@@ -214,11 +273,64 @@ export function AdminTeachers() {
       setModalOpen(false)
       reload()
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setErrors((prev) => ({ ...prev, email: err.message }))
+      }
       toast.danger(err instanceof Error ? err.message : 'Could not add the faculty member.')
     } finally {
       setAdding(false)
     }
   }
+
+  const handleUpdate = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editingTeacher) return
+    const nextErrors: typeof editErrors = {}
+    if (!editName.trim()) nextErrors.name = 'Name is required.'
+    if (!editEmail.trim()) nextErrors.email = 'Email is required.'
+    else if (!/^\S+@\S+\.\S+$/.test(editEmail.trim())) nextErrors.email = 'Enter a valid email address.'
+    if (!editDepartment.trim()) nextErrors.department = 'Department is required.'
+    if (!editDesignation.trim()) nextErrors.designation = 'Designation is required.'
+    if (editSubjectIds.length === 0) nextErrors.subjects = 'Assign at least one subject.'
+    setEditErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
+
+    setSavingEdit(true)
+    try {
+      await apiFetch(`/api/admin/teachers/${editingTeacher.id}`, {
+        method: 'PATCH',
+        sessionKey: 'admin-portal.session',
+        body: {
+          name: editName.trim(),
+          email: editEmail.trim(),
+          department: editDepartment.trim(),
+          designation: editDesignation.trim(),
+          phone: editPhone.trim() || undefined,
+          subjects: editSubjectIds,
+          status: editStatus,
+        },
+      })
+      toast.success(`${editName.trim()} updated successfully.`)
+      setEditingTeacher(null)
+      reload()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setEditErrors((prev) => ({ ...prev, email: err.message }))
+        toast.danger(err.message)
+      } else {
+        toast.danger(err instanceof Error ? err.message : 'Could not update the faculty member.')
+      }
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  // Resolve facultyId for the editing teacher (read-only display)
+  const editingFacultyId = useMemo(() => {
+    if (!editingTeacher) return ''
+    const raw = teachersData?.rows.find((r) => r.id === editingTeacher.id) as ApiTeacher | undefined
+    return raw?.facultyId ?? ''
+  }, [editingTeacher, teachersData])
 
   return (
     <div className="space-y-6">
@@ -273,19 +385,20 @@ export function AdminTeachers() {
             <SkeletonRows rows={6} />
           ) : (
           <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full min-w-[820px] text-left text-sm">
+            <table className="w-full min-w-[920px] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
                   <th scope="col" className="px-6 py-3.5 font-semibold">Name</th>
                   <th scope="col" className="px-4 py-3.5 font-semibold">Department</th>
                   <th scope="col" className="px-4 py-3.5 font-semibold">Email</th>
                   <th scope="col" className="px-4 py-3.5 font-semibold">Subjects Assigned</th>
-                  <th scope="col" className="px-6 py-3.5 font-semibold">Status</th>
+                  <th scope="col" className="px-4 py-3.5 font-semibold">Status</th>
+                  <th scope="col" className="px-6 py-3.5 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((teacher) => (
-                  <TeacherTableRow key={teacher.id} teacher={teacher} />
+                  <TeacherTableRow key={teacher.id} teacher={teacher} onEdit={openEdit} />
                 ))}
               </tbody>
             </table>
@@ -476,6 +589,159 @@ export function AdminTeachers() {
             )}
           </fieldset>
         </form>
+      </Modal>
+
+      {/* Edit faculty dialog */}
+      <Modal
+        open={editingTeacher !== null}
+        onClose={closeEdit}
+        title="Edit Faculty"
+        subtitle={editingTeacher ? `Update details for ${editingTeacher.name}` : undefined}
+        wide
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" form="edit-teacher-form" loading={savingEdit}>
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        {editingTeacher && (
+          <form id="edit-teacher-form" onSubmit={handleUpdate} noValidate className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="edit-teacher-facultyId" className="mb-1.5 block text-sm font-medium text-ink">
+                  Faculty ID
+                </label>
+                <input
+                  id="edit-teacher-facultyId"
+                  value={editingFacultyId || '—'}
+                  readOnly
+                  disabled
+                  className="h-11 w-full rounded-xl border border-line bg-primary-lighter/40 px-4 text-sm font-semibold text-ink-soft"
+                />
+                <p className="mt-1 text-xs text-ink-soft">Faculty ID cannot be changed.</p>
+              </div>
+              <TextField
+                id="edit-teacher-name"
+                label="Name"
+                required
+                placeholder="e.g. Dr. Priya Sharma"
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, name: undefined }))
+                }}
+                error={editErrors.name}
+              />
+              <TextField
+                id="edit-teacher-email"
+                label="Email"
+                required
+                type="email"
+                placeholder="e.g. priya.sharma@westin.edu"
+                value={editEmail}
+                onChange={(e) => {
+                  setEditEmail(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, email: undefined }))
+                }}
+                error={editErrors.email}
+              />
+              <TextField
+                id="edit-teacher-department"
+                label="Department"
+                required
+                placeholder="e.g. CSE - AIML"
+                value={editDepartment}
+                onChange={(e) => {
+                  setEditDepartment(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, department: undefined }))
+                }}
+                error={editErrors.department}
+              />
+              <SelectField
+                id="edit-teacher-designation"
+                label="Designation"
+                required
+                placeholder="Select designation"
+                options={[
+                  { value: 'Professor', label: 'Professor' },
+                  { value: 'Associate Professor', label: 'Associate Professor' },
+                  { value: 'Assistant Professor', label: 'Assistant Professor' },
+                  { value: 'Lecturer', label: 'Lecturer' },
+                ]}
+                value={editDesignation}
+                onChange={(e) => {
+                  setEditDesignation(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, designation: undefined }))
+                }}
+                error={editErrors.designation}
+              />
+              <SelectField
+                id="edit-teacher-status"
+                label="Status"
+                required
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                ]}
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as 'active' | 'inactive')}
+              />
+              <TextField
+                id="edit-teacher-phone"
+                label="Phone"
+                type="tel"
+                placeholder="e.g. +91 98450 11209"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                className="sm:col-span-2"
+              />
+            </div>
+
+            <fieldset>
+              <legend className="mb-1.5 block text-sm font-medium text-ink">
+                Subjects
+                <span className="ml-0.5 text-danger" aria-hidden="true">
+                  *
+                </span>
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {subjects.map((subject) => {
+                  const selected = editSubjectIds.includes(subject.id)
+                  return (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleEditSubject(subject.id)}
+                      className={
+                        selected
+                          ? 'rounded-lg border border-primary bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors duration-150'
+                          : 'rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft transition-colors duration-150 hover:border-primary/40 hover:text-primary-dark'
+                      }
+                    >
+                      {subject.code}
+                    </button>
+                  )
+                })}
+              </div>
+              {subjectsError && !subjectsData && (
+                <div className="mt-2">
+                  <ErrorState message={subjectsError} onRetry={reloadSubjects} compact />
+                </div>
+              )}
+              {editErrors.subjects && (
+                <p role="alert" className="mt-1 text-xs font-medium text-danger">
+                  {editErrors.subjects}
+                </p>
+              )}
+            </fieldset>
+          </form>
+        )}
       </Modal>
     </div>
   )

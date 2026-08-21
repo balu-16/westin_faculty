@@ -27,6 +27,7 @@ export interface AuthUserPayload {
   studentId: string | null
   facultyId: string | null
   adminId: string | null
+  avatarUrl: string | null
 }
 
 export interface Session {

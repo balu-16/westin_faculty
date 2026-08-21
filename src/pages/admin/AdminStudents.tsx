@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { GraduationCap, Monitor, Plus, Search } from 'lucide-react'
+import { GraduationCap, Monitor, Pencil, Plus, Search, TriangleAlert } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
@@ -12,7 +12,7 @@ import { SelectField, TextField } from '../../components/FormFields'
 import { SkeletonRows } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
-import { useApi } from '../../lib/api'
+import { ApiError, apiFetch, useApi } from '../../lib/api'
 import {
   mapLoginLog,
   mapStudent,
@@ -22,7 +22,7 @@ import {
 } from '../../lib/mappers'
 import { useSections } from '../../contexts/SectionsContext'
 import type { LoginLog, StudentRow as DirectoryRow } from '../../types'
-import { attendanceHealth, cx, healthClasses } from '../../utils'
+import { attendanceHealth, cx, healthClasses, yearToNumber } from '../../utils'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 /** One memoized login-log row — the logs tab re-renders the table on every
@@ -82,7 +82,13 @@ function LoginLogsTable({
 
 /** Memoized student table row — only re-renders when its own student record
  *  changes, not on every search keystroke or unrelated state update. */
-const StudentTableRow = memo(function StudentTableRow({ student }: { student: DirectoryRow }) {
+const StudentTableRow = memo(function StudentTableRow({
+  student,
+  onEdit,
+}: {
+  student: DirectoryRow
+  onEdit: (student: DirectoryRow) => void
+}) {
   const health = attendanceHealth(student.attendance)
   const meta = healthClasses(health)
   return (
@@ -104,8 +110,20 @@ const StudentTableRow = memo(function StudentTableRow({ student }: { student: Di
         <span className={cx('text-sm font-bold', meta.text)}>{student.attendance}%</span>
         <span className="ml-2 text-[11px] font-medium text-ink-soft">{meta.label}</span>
       </td>
-      <td className="px-6 py-3.5">
+      <td className="px-4 py-3.5">
         <StatusBadge status={student.status} />
+      </td>
+      <td className="px-6 py-3.5">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => onEdit(student)}
+            aria-label={`Edit ${student.name}`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:bg-primary-light hover:text-primary-dark"
+          >
+            <Pencil size={14} aria-hidden="true" />
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -173,6 +191,22 @@ export function AdminStudents() {
     department?: string
   }>({})
 
+  // Edit state
+  const [editingStudent, setEditingStudent] = useState<DirectoryRow | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editSectionId, setEditSectionId] = useState('')
+  const [editYear, setEditYear] = useState('3rd Year')
+  const [editDepartment, setEditDepartment] = useState('')
+  const [editStatus, setEditStatus] = useState<'active' | 'inactive'>('active')
+  const [editErrors, setEditErrors] = useState<{
+    name?: string
+    email?: string
+    section?: string
+    department?: string
+  }>({})
+  const [savingEdit, setSavingEdit] = useState(false)
+
   const filtered = rows
 
   const openAdd = () => {
@@ -185,6 +219,19 @@ export function AdminStudents() {
     setErrors({})
     setModalOpen(true)
   }
+
+  const openEdit = (student: DirectoryRow) => {
+    setEditingStudent(student)
+    setEditName(student.name)
+    setEditEmail(student.email)
+    setEditSectionId(student.sectionId ?? '')
+    setEditYear(student.year || '3rd Year')
+    setEditDepartment(student.department ?? '')
+    setEditStatus(student.status)
+    setEditErrors({})
+  }
+
+  const closeEdit = () => setEditingStudent(null)
 
   const handleAdd = async (e: FormEvent) => {
     e.preventDefault()
@@ -213,11 +260,58 @@ export function AdminStudents() {
       reload()
       void reloadSections()
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setErrors((prev) => ({ ...prev, email: err.message }))
+      }
       toast.danger(err instanceof Error ? err.message : 'Could not enrol the student.')
     } finally {
       setAdding(false)
     }
   }
+
+  const handleEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editingStudent) return
+    const nextErrors: typeof editErrors = {}
+    if (!editName.trim()) nextErrors.name = 'Name is required.'
+    if (!editEmail.trim()) nextErrors.email = 'Email is required.'
+    else if (!/^\S+@\S+\.\S+$/.test(editEmail.trim())) nextErrors.email = 'Enter a valid email address.'
+    if (!editSectionId) nextErrors.section = 'Select a section.'
+    if (!editDepartment.trim()) nextErrors.department = 'Department is required.'
+    setEditErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
+
+    setSavingEdit(true)
+    try {
+      await apiFetch(`/api/admin/students/${editingStudent.id}`, {
+        method: 'PATCH',
+        sessionKey: 'admin-portal.session',
+        body: {
+          name: editName.trim(),
+          email: editEmail.trim(),
+          sectionId: editSectionId,
+          year: yearToNumber(editYear),
+          department: editDepartment.trim(),
+          status: editStatus,
+        },
+      })
+      toast.success(`${editName.trim()} updated successfully.`)
+      setEditingStudent(null)
+      reload()
+      void reloadSections()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setEditErrors((prev) => ({ ...prev, email: err.message }))
+        toast.danger(err.message)
+      } else {
+        toast.danger(err instanceof Error ? err.message : 'Could not update the student.')
+      }
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  const isSectionChanged = editingStudent ? editSectionId !== (editingStudent.sectionId ?? '') : false
 
   return (
     <div className="space-y-6">
@@ -306,7 +400,7 @@ export function AdminStudents() {
             <SkeletonRows rows={6} />
           ) : (
           <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
                   <th scope="col" className="px-6 py-3.5 font-semibold">Name</th>
@@ -314,12 +408,13 @@ export function AdminStudents() {
                   <th scope="col" className="px-4 py-3.5 font-semibold">Section</th>
                   <th scope="col" className="px-4 py-3.5 font-semibold">Email</th>
                   <th scope="col" className="px-4 py-3.5 font-semibold">Attendance %</th>
-                  <th scope="col" className="px-6 py-3.5 font-semibold">Status</th>
+                  <th scope="col" className="px-4 py-3.5 font-semibold">Status</th>
+                  <th scope="col" className="px-6 py-3.5 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((student) => (
-                  <StudentTableRow key={student.id} student={student} />
+                  <StudentTableRow key={student.id} student={student} onEdit={openEdit} />
                 ))}
               </tbody>
             </table>
@@ -482,6 +577,127 @@ export function AdminStudents() {
             />
           </div>
         </form>
+      </Modal>
+
+      {/* Edit student dialog */}
+      <Modal
+        open={editingStudent !== null}
+        onClose={closeEdit}
+        title="Edit Student"
+        subtitle={editingStudent ? `Update details for ${editingStudent.name}` : undefined}
+        wide
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeEdit}>
+              Cancel
+            </Button>
+            <Button type="submit" form="edit-student-form" loading={savingEdit}>
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        {editingStudent && (
+          <form id="edit-student-form" onSubmit={handleEdit} noValidate className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField
+                id="edit-student-name"
+                label="Name"
+                required
+                placeholder="e.g. Aarav Sharma"
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, name: undefined }))
+                }}
+                error={editErrors.name}
+              />
+              <div>
+                <label htmlFor="edit-student-id" className="mb-1.5 block text-sm font-medium text-ink">
+                  Student ID
+                </label>
+                <input
+                  id="edit-student-id"
+                  value={editingStudent.studentId}
+                  readOnly
+                  disabled
+                  className="h-11 w-full rounded-xl border border-line bg-primary-lighter/40 px-4 text-sm font-semibold text-ink-soft"
+                />
+                <p className="mt-1 text-xs text-ink-soft">Student ID cannot be changed.</p>
+              </div>
+              <TextField
+                id="edit-student-email"
+                label="Email"
+                required
+                type="email"
+                placeholder="e.g. aarav.sharma@university.edu"
+                value={editEmail}
+                onChange={(e) => {
+                  setEditEmail(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, email: undefined }))
+                }}
+                error={editErrors.email}
+              />
+              <SelectField
+                id="edit-student-section"
+                label="Section"
+                required
+                placeholder="Select section"
+                options={directorySections.map((s) => ({ value: s.id, label: s.name }))}
+                value={editSectionId}
+                onChange={(e) => {
+                  setEditSectionId(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, section: undefined }))
+                }}
+                error={editErrors.section}
+              />
+              <SelectField
+                id="edit-student-year"
+                label="Year"
+                required
+                options={[
+                  { value: '1st Year', label: '1st Year' },
+                  { value: '2nd Year', label: '2nd Year' },
+                  { value: '3rd Year', label: '3rd Year' },
+                  { value: '4th Year', label: '4th Year' },
+                ]}
+                value={editYear}
+                onChange={(e) => setEditYear(e.target.value)}
+              />
+              <TextField
+                id="edit-student-department"
+                label="Department"
+                required
+                placeholder="e.g. CSE - AIML"
+                value={editDepartment}
+                onChange={(e) => {
+                  setEditDepartment(e.target.value)
+                  setEditErrors((prev) => ({ ...prev, department: undefined }))
+                }}
+                error={editErrors.department}
+              />
+              <SelectField
+                id="edit-student-status"
+                label="Status"
+                required
+                options={[
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                ]}
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value as 'active' | 'inactive')}
+              />
+            </div>
+            {isSectionChanged && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
+                <TriangleAlert size={16} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
+                <p className="text-xs font-medium leading-relaxed text-warning">
+                  Changing the section will assign a new roll number for the student in the destination section.
+                </p>
+              </div>
+            )}
+          </form>
+        )}
       </Modal>
     </div>
   )

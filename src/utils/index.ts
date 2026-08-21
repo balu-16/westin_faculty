@@ -20,7 +20,31 @@ export function toISODate(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-export const todayISO = toISODate(new Date())
+/* ---------- Kolkata-aware date helpers (Asia/Kolkata) ---------- */
+
+/** Stable formatter for YYYY-MM-DD in Asia/Kolkata — mirrors westin-api/src/common/util/time.ts kolkataNow */
+const kolkataISOFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+/**
+ * Kolkata wall-clock date (YYYY-MM-DD). Recomputes on each call so a stale
+ * module-level constant after midnight does not leak yesterday's date.
+ */
+export function kolkataTodayISO(date = new Date()): string {
+  return kolkataISOFormatter.format(date)
+}
+
+/** Alias recomputable Kolkata today — preferred import for attendance */
+export function getTodayISO(date = new Date()): string {
+  return kolkataTodayISO(date)
+}
+
+/** Backward-compatible module constant — now Kolkata-aware at load time */
+export const todayISO = kolkataTodayISO()
 
 /** "16 Aug 2026, Sunday" — matches the label style used in the student portal. */
 export function formatDateLabel(date: Date): string {
@@ -29,7 +53,34 @@ export function formatDateLabel(date: Date): string {
   return `${day}, ${weekday}`
 }
 
-export const todayDateLabel = formatDateLabel(new Date())
+/** Kolkata-aware label: "16 Aug 2026, Sunday" using Asia/Kolkata */
+export function getTodayDateLabel(date = new Date()): string {
+  const day = date.toLocaleDateString('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+  const weekday = date.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'long' })
+  return `${day}, ${weekday}`
+}
+
+/** Alias for Kolkata-aware date label */
+export function kolkataTodayDateLabel(date = new Date()): string {
+  return getTodayDateLabel(date)
+}
+
+/** Function form of todayDateLabel for recomputable Kolkata label */
+export function todayDateLabelFn(date = new Date()): string {
+  return getTodayDateLabel(date)
+}
+
+export const todayDateLabel = getTodayDateLabel()
+
+/** Helper: is the supplied YYYY-MM-DD editable today in Kolkata? */
+export function isAttendanceEditable(dateISO: string, today = kolkataTodayISO()): boolean {
+  return dateISO === today
+}
 
 /** "2026-08-14" (or an already formatted date) → "14 Aug 2026". */
 export function displayDate(value: string): string {

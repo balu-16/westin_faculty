@@ -109,6 +109,7 @@ export interface FacultyUser {
   email: string
   department: string
   designation: string
+  avatarUrl: string | null
   /** API user id — used to match resources created by this faculty member */
   id?: string
 }
@@ -156,6 +157,7 @@ export interface AdminUser {
   adminId: string
   email: string
   role: string
+  avatarUrl: string | null
   id?: string
 }
 

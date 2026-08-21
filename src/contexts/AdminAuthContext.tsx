@@ -23,11 +23,11 @@ const STORAGE_KEY: SessionKey = 'admin-portal.session'
 interface AdminAuthValue {
   user: AdminUser | null
   isAuthenticated: boolean
-  /** Step 1 — ask the API to email a 6-digit code to the identifier. */
   requestOtp: (_identifier: string) => Promise<void>
-  /** Step 2 — verify the code and store the returned session. */
   login: (_identifier: string, _code: string) => Promise<void>
   logout: () => void
+  refreshProfile: () => Promise<void>
+  updateAvatar: (url: string | null) => void
 }
 
 const AdminAuthContext = createContext<AdminAuthValue | undefined>(undefined)
@@ -49,6 +49,7 @@ function toAdminUser(payload: AuthUserPayload): AdminUser {
     adminId: payload.adminId ?? '',
     email: payload.email,
     role: payload.role === 'admin' ? 'Admin' : payload.role,
+    avatarUrl: (payload as any).avatarUrl ?? null,
   }
 }
 
@@ -62,7 +63,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(() => sessionUser(getSession(STORAGE_KEY)))
 
   const requestOtp = useCallback(async (identifier: string) => {
-    await apiFetch('/api/auth/otp/request', { method: 'POST', body: { identifier } })
+    await apiFetch('/api/auth/otp/request', { method: 'POST', body: { identifier, portal: 'admin' } })
   }, [])
 
   const login = useCallback(async (identifier: string, code: string) => {
@@ -91,9 +92,31 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ user: AuthUserPayload } | AuthUserPayload>('/api/auth/me', { sessionKey: STORAGE_KEY })
+      const payload: AuthUserPayload = (data as any).user ?? (data as any)
+      const session = getSession(STORAGE_KEY)
+      if (session) {
+        const updated = { ...session, user: payload }
+        setSession(STORAGE_KEY, updated)
+        setUser(toAdminUser(payload))
+      }
+    } catch {}
+  }, [])
+
+  const updateAvatar = useCallback((avatarUrl: string | null) => {
+    setUser((prev) => (prev ? { ...prev, avatarUrl } : prev))
+    const session = getSession(STORAGE_KEY)
+    if (session) {
+      ;(session.user as any).avatarUrl = avatarUrl
+      setSession(STORAGE_KEY, session)
+    }
+  }, [])
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: user !== null, requestOtp, login, logout }),
-    [user, requestOtp, login, logout],
+    () => ({ user, isAuthenticated: user !== null, requestOtp, login, logout, refreshProfile, updateAvatar }),
+    [user, requestOtp, login, logout, refreshProfile, updateAvatar],
   )
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>

@@ -23,11 +23,11 @@ const STORAGE_KEY: SessionKey = 'faculty-portal.session'
 interface FacultyAuthValue {
   user: FacultyUser | null
   isAuthenticated: boolean
-  /** Step 1 — ask the API to email a 6-digit code to the identifier. */
   requestOtp: (_identifier: string) => Promise<void>
-  /** Step 2 — verify the code and store the returned session. */
   login: (_identifier: string, _code: string) => Promise<void>
   logout: () => void
+  refreshProfile: () => Promise<void>
+  updateAvatar: (url: string | null) => void
 }
 
 const FacultyAuthContext = createContext<FacultyAuthValue | undefined>(undefined)
@@ -50,6 +50,7 @@ function toFacultyUser(payload: AuthUserPayload): FacultyUser {
     email: payload.email,
     department: payload.department ?? '',
     designation: payload.designation ?? '',
+    avatarUrl: (payload as any).avatarUrl ?? null,
   }
 }
 
@@ -63,7 +64,7 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FacultyUser | null>(() => sessionUser(getSession(STORAGE_KEY)))
 
   const requestOtp = useCallback(async (identifier: string) => {
-    await apiFetch('/api/auth/otp/request', { method: 'POST', body: { identifier } })
+    await apiFetch('/api/auth/otp/request', { method: 'POST', body: { identifier, portal: 'faculty' } })
   }, [])
 
   const login = useCallback(async (identifier: string, code: string) => {
@@ -92,9 +93,31 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      const data = await apiFetch<{ user: AuthUserPayload } | AuthUserPayload>('/api/auth/me', { sessionKey: STORAGE_KEY })
+      const payload: AuthUserPayload = (data as any).user ?? (data as any)
+      const session = getSession(STORAGE_KEY)
+      if (session) {
+        const updated = { ...session, user: payload }
+        setSession(STORAGE_KEY, updated)
+        setUser(toFacultyUser(payload))
+      }
+    } catch {}
+  }, [])
+
+  const updateAvatar = useCallback((avatarUrl: string | null) => {
+    setUser((prev) => (prev ? { ...prev, avatarUrl } : prev))
+    const session = getSession(STORAGE_KEY)
+    if (session) {
+      ;(session.user as any).avatarUrl = avatarUrl
+      setSession(STORAGE_KEY, session)
+    }
+  }, [])
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: user !== null, requestOtp, login, logout }),
-    [user, requestOtp, login, logout],
+    () => ({ user, isAuthenticated: user !== null, requestOtp, login, logout, refreshProfile, updateAvatar }),
+    [user, requestOtp, login, logout, refreshProfile, updateAvatar],
   )
 
   return <FacultyAuthContext.Provider value={value}>{children}</FacultyAuthContext.Provider>

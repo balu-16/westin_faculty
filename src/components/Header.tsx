@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react'
-import { Bell, CalendarDays, Menu } from 'lucide-react'
-import { cx, todayDateLabel } from '../utils'
+import { Bell, CalendarDays, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { useOutletContext } from 'react-router-dom'
+import { cx, getTodayDateLabel, todayDateLabel } from '../utils'
+import type { PortalLayoutContext } from '../layouts/PortalShell'
 
 interface HeaderProps {
   title: ReactNode
   subtitle?: string
   onMenuClick?: () => void
+  onToggleSidebar?: () => void
+  collapsed?: boolean
   /** Show the personalised greeting (dashboard); otherwise render `title` */
   showGreeting?: boolean
   /** First name for the greeting (portal-specific) */
@@ -18,10 +22,19 @@ export function Header({
   title,
   subtitle,
   onMenuClick,
+  onToggleSidebar,
+  collapsed,
   showGreeting = false,
   firstName,
   actions,
 }: HeaderProps) {
+  let outletCtx: PortalLayoutContext | null = null
+  try {
+    outletCtx = useOutletContext<PortalLayoutContext>() as any
+  } catch {}
+  const effToggle = onToggleSidebar ?? outletCtx?.toggleSidebar
+  const effCollapsed = collapsed ?? outletCtx?.collapsed
+  const effMenu = onMenuClick ?? outletCtx?.openMenu
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
 
@@ -29,14 +42,25 @@ export function Header({
     <header className="flex flex-wrap items-center justify-between gap-4">
       <div className="min-w-0">
         <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-ink sm:text-[1.7rem]">
-          {onMenuClick && (
+          {effMenu && (
             <button
               type="button"
-              onClick={onMenuClick}
+              onClick={effMenu}
               aria-label="Open navigation menu"
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:text-primary lg:hidden"
             >
               <Menu size={20} aria-hidden="true" />
+            </button>
+          )}
+          {effToggle && (
+            <button
+              type="button"
+              onClick={effToggle}
+              aria-label={effCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={effCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:text-primary lg:flex"
+            >
+              {effCollapsed ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
             </button>
           )}
           {showGreeting ? (
@@ -62,7 +86,7 @@ export function Header({
           </button>
           <div className="flex h-10 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-medium text-ink-soft">
             <CalendarDays size={16} className="text-primary" aria-hidden="true" />
-            <span>{todayDateLabel}</span>
+            <span>{(() => { try { return getTodayDateLabel() } catch { return todayDateLabel } })()}</span>
           </div>
         </div>
       )}

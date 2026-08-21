@@ -17,6 +17,8 @@ interface SidebarContentProps {
   navItems: NavItem[]
   profileName: string
   profileDetail: string
+  avatarUrl?: string | null
+  collapsed?: boolean
   onLogout: () => void
   onNavigate?: () => void
 }
@@ -26,13 +28,16 @@ function SidebarContent({
   navItems,
   profileName,
   profileDetail,
+  avatarUrl,
+  collapsed,
   onLogout,
   onNavigate,
 }: SidebarContentProps) {
+  const width = collapsed ? 'w-[88px]' : 'w-[288px]'
   return (
-    <div className="flex h-full w-[264px] shrink-0 flex-col bg-gradient-to-b from-[#4FB0F4] via-[#3BA7F2] to-[#168BE5]">
+    <div className={cx('flex h-full shrink-0 flex-col bg-gradient-to-b from-[#4FB0F4] via-[#3BA7F2] to-[#168BE5]', width)}>
       {/* College logo + portal title */}
-      <div className="px-4 pt-4">
+      <div className={cx('pt-4', collapsed ? 'px-2' : 'px-4')}>
         <div className="rounded-2xl bg-white p-2.5 shadow-[0_6px_18px_rgba(20,33,61,0.08)]">
           <img
             src={westinLogo}
@@ -43,24 +48,29 @@ function SidebarContent({
             className="mx-auto block h-auto w-full"
           />
         </div>
-        <p className="mt-3 text-center text-[17px] font-bold text-white">{portalTitle}</p>
-        <div className="mx-2 mt-3.5 h-px bg-white/25" role="presentation" />
+        {!collapsed && (
+          <>
+            <p className="mt-3 text-center text-[17px] font-bold text-white">{portalTitle}</p>
+            <div className="mx-2 mt-3.5 h-px bg-white/25" role="presentation" />
+          </>
+        )}
+        {collapsed && <div className="mx-2 mt-3 h-px bg-white/25" role="presentation" />}
       </div>
 
       {/* Navigation */}
-      <nav aria-label="Portal navigation" className="flex-1 space-y-2 overflow-y-auto px-4 scrollbar-thin">
+      <nav aria-label="Portal navigation" className={cx('flex-1 overflow-y-auto scrollbar-thin', collapsed ? 'space-y-1 px-2' : 'space-y-1 px-4')}>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            /* Exact matching — without `end`, NavLink treats `to` as a path
-               prefix, so "/faculty" would also stay active on every
-               "/faculty/*" subpage alongside the real active item. */
             end
             onClick={onNavigate}
+            title={collapsed ? item.label : undefined}
+            aria-label={collapsed ? item.label : undefined}
             className={({ isActive }) =>
               cx(
-                'flex h-[52px] items-center gap-3.5 rounded-xl px-4 text-base font-semibold transition-all duration-200',
+                'flex h-[52px] items-center rounded-xl text-base font-semibold transition-all duration-200',
+                collapsed ? 'justify-center px-2' : 'gap-2.5 px-4',
                 isActive
                   ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]'
                   : 'text-white/90 hover:bg-white/15 hover:text-white',
@@ -68,19 +78,21 @@ function SidebarContent({
             }
           >
             <item.icon size={21} aria-hidden="true" />
-            {item.label}
+            {!collapsed && item.label}
           </NavLink>
         ))}
       </nav>
 
       {/* Campus illustration fading into the sidebar */}
-      <div className="pointer-events-none select-none px-3 opacity-95">
-        <CampusIllustration tone="white" />
-      </div>
+      {!collapsed && (
+        <div className="pointer-events-none select-none px-3 opacity-95">
+          <CampusIllustration tone="white" />
+        </div>
+      )}
 
       {/* Profile card */}
-      <div className="px-4 pb-5 pt-2">
-        <ProfileCard name={profileName} detail={profileDetail} onLogout={onLogout} />
+      <div className={cx(collapsed ? 'px-2 pb-5 pt-2' : 'px-4 pb-5 pt-2')}>
+        <ProfileCard name={profileName} detail={profileDetail} avatarUrl={avatarUrl} collapsed={collapsed} onLogout={onLogout} />
       </div>
     </div>
   )
@@ -94,6 +106,8 @@ interface SidebarProps {
   navItems: NavItem[]
   profileName: string
   profileDetail: string
+  avatarUrl?: string | null
+  collapsed?: boolean
   onLogout: () => void
 }
 
@@ -104,6 +118,8 @@ export function Sidebar({
   navItems,
   profileName,
   profileDetail,
+  avatarUrl,
+  collapsed,
   onLogout,
 }: SidebarProps) {
   return (
@@ -116,6 +132,8 @@ export function Sidebar({
             navItems={navItems}
             profileName={profileName}
             profileDetail={profileDetail}
+            avatarUrl={avatarUrl}
+            collapsed={collapsed}
             onLogout={onLogout}
           />
         </div>
@@ -147,6 +165,7 @@ export function Sidebar({
             navItems={navItems}
             profileName={profileName}
             profileDetail={profileDetail}
+            avatarUrl={avatarUrl}
             onLogout={onLogout}
             onNavigate={onClose}
           />

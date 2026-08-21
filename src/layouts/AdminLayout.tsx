@@ -35,6 +35,7 @@ export function AdminLayout() {
       navItems={adminNavItems}
       profileName={user?.name ?? ''}
       profileDetail={user?.role ?? ''}
+      avatarUrl={user?.avatarUrl ?? null}
       onLogout={logout}
     />
   )

@@ -4,6 +4,8 @@ import { Sidebar, type NavItem } from '../components/Sidebar'
 
 export interface PortalLayoutContext {
   openMenu: () => void
+  toggleSidebar: () => void
+  collapsed: boolean
 }
 
 interface PortalShellProps {
@@ -14,6 +16,7 @@ interface PortalShellProps {
   navItems: NavItem[]
   profileName: string
   profileDetail: string
+  avatarUrl?: string | null
   onLogout: () => void
 }
 
@@ -25,9 +28,18 @@ export function PortalShell({
   navItems,
   profileName,
   profileDetail,
+  avatarUrl,
   onLogout,
 }: PortalShellProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      const key = `${portalTitle.toLowerCase().replace(/\s+/g, '-')}.sidebarCollapsed`
+      return localStorage.getItem(key) === 'true'
+    } catch {
+      return false
+    }
+  })
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -42,11 +54,27 @@ export function PortalShell({
     }
   }, [menuOpen])
 
+  useEffect(() => {
+    try {
+      const key = `${portalTitle.toLowerCase().replace(/\s+/g, '-')}.sidebarCollapsed`
+      localStorage.setItem(key, String(collapsed))
+    } catch {}
+  }, [collapsed, portalTitle])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && menuOpen) setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
   if (!isAuthenticated) {
     return <Navigate to={loginPath} replace state={{ from: location.pathname }} />
   }
 
-  const context: PortalLayoutContext = { openMenu: () => setMenuOpen(true) }
+  const toggleSidebar = () => setCollapsed((v) => !v)
+  const context: PortalLayoutContext = { openMenu: () => setMenuOpen(true), toggleSidebar, collapsed }
 
   const handleLogout = () => {
     onLogout()
@@ -62,9 +90,11 @@ export function PortalShell({
         navItems={navItems}
         profileName={profileName}
         profileDetail={profileDetail}
+        avatarUrl={avatarUrl}
+        collapsed={collapsed}
         onLogout={handleLogout}
       />
-      <div className="lg:pl-[264px]">
+      <div className={collapsed ? 'lg:pl-[88px]' : 'lg:pl-[288px]'}>
         <main className="mx-auto w-full max-w-[1200px] animate-fade-in px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet context={context} />
         </main>

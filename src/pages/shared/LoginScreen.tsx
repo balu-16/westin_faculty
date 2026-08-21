@@ -5,6 +5,7 @@ import { Button } from '../../components/Button'
 import { FallingIcons, HotelScene } from '../../components/HotelScene'
 import westinLogoAvif from '../../assets/images/westin-logo.avif'
 import westinLogoPng from '../../assets/images/westin-logo.png'
+import { ApiError } from '../../lib/api'
 
 // Preload the AVIF logo via its hashed build URL (Vite rewrites the import to
 // e.g. /assets/westin-logo-BOnCdI7I.avif, which is why index.html can't hard-
@@ -127,11 +128,31 @@ export function LoginScreen({
       setDigits(Array(OTP_LENGTH).fill(''))
       setStep(2)
     } catch (err) {
-      setError(
-        err instanceof Error && err.message
-          ? err.message
-          : 'Could not send the code — please try again.',
-      )
+      let message: string
+      if (err instanceof ApiError) {
+        const payload = err.payload as { code?: string; message?: string } | null
+        const code = payload?.code
+        const serverMessage = typeof payload?.message === 'string' ? payload.message : ''
+        if (code === 'ACCOUNT_NOT_REGISTERED' || /not registered/i.test(serverMessage)) {
+          message = 'This email is not registered for the Westin Faculty/Admin Portal.'
+          // Prefer portal-specific message from server when available (e.g. Faculty vs Admin)
+          if (serverMessage && /Westin/.test(serverMessage)) message = serverMessage
+        } else if (code === 'PORTAL_ACCESS_DENIED' || /cannot sign in/i.test(serverMessage)) {
+          message = serverMessage || 'This account cannot sign in to the Westin Faculty/Admin Portal.'
+        } else if (code === 'ACCOUNT_INACTIVE' || /inactive/i.test(serverMessage)) {
+          message = 'This account is inactive. Contact your college administration.'
+          if (serverMessage && /inactive/i.test(serverMessage)) message = serverMessage
+        } else {
+          message = err.message || 'Could not send the code — please try again.'
+        }
+      } else {
+        message =
+          err instanceof Error && err.message
+            ? err.message
+            : 'Could not send the code — please try again.'
+      }
+      setError(message)
+      // Stay on step 1 — do not advance to OTP entry and do not show "We've sent a 6-digit code"
     } finally {
       setSending(false)
     }
@@ -158,17 +179,36 @@ export function LoginScreen({
   const handleResend = async () => {
     if (resending) return
     setError('')
-    setDigits(Array(OTP_LENGTH).fill(''))
     setResending(true)
     try {
       await requestOtp(identifier.trim())
+      setDigits(Array(OTP_LENGTH).fill(''))
       setResendCount((c) => c + 1)
     } catch (err) {
-      setError(
-        err instanceof Error && err.message
-          ? err.message
-          : 'Could not resend the code — please try again.',
-      )
+      let message: string
+      if (err instanceof ApiError) {
+        const payload = err.payload as { code?: string; message?: string } | null
+        const code = payload?.code
+        const serverMessage = typeof payload?.message === 'string' ? payload.message : ''
+        if (code === 'ACCOUNT_NOT_REGISTERED' || /not registered/i.test(serverMessage)) {
+          message = 'This email is not registered for the Westin Faculty/Admin Portal.'
+          if (serverMessage && /Westin/.test(serverMessage)) message = serverMessage
+        } else if (code === 'PORTAL_ACCESS_DENIED' || /cannot sign in/i.test(serverMessage)) {
+          message = serverMessage || 'This account cannot sign in to the Westin Faculty/Admin Portal.'
+        } else if (code === 'ACCOUNT_INACTIVE' || /inactive/i.test(serverMessage)) {
+          message = 'This account is inactive. Contact your college administration.'
+          if (serverMessage && /inactive/i.test(serverMessage)) message = serverMessage
+        } else {
+          message = err.message || 'Could not resend the code — please try again.'
+        }
+      } else {
+        message =
+          err instanceof Error && err.message
+            ? err.message
+            : 'Could not resend the code — please try again.'
+      }
+      setError(message)
+      // Do not increment resendCount — countdown restarts only after a successful resend
     } finally {
       setResending(false)
     }

@@ -33,6 +33,7 @@ export function FacultyLayout() {
       navItems={facultyNavItems}
       profileName={user?.name ?? ''}
       profileDetail={user ? `${user.department} • ${user.designation}` : ''}
+      avatarUrl={user?.avatarUrl ?? null}
       onLogout={logout}
     />
   )

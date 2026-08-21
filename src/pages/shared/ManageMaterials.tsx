@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   ChevronLeft,
@@ -150,7 +150,39 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
   const { openMenu } = useOutletContext<PortalLayoutContext>()
   const toast = useToast()
 
-  const { data, error, loading, reload } = useApi<MaterialsPayload>(sessionKey, '/api/materials')
+  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState('latest')
+  const [subjectFilter, setSubjectFilter] = useState<string | null>(null)
+  const PAGE_SIZE = 20
+  const foldersRef = useRef<HTMLDivElement | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [title, setTitle] = useState('')
+  const [subject, setSubject] = useState('')
+  const [description, setDescription] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [errors, setErrors] = useState<{ file?: string; title?: string; subject?: string }>({})
+
+  useEffect(() => {
+    const t = window.setTimeout(() => { setSearch(query.trim()); setPage(1) }, 300)
+    return () => window.clearTimeout(t)
+  }, [query])
+
+  const materialsPath = (() => {
+    const params = new URLSearchParams()
+    if (search) params.set('search', search)
+    if (subjectFilter) params.set('subjectId', subjectFilter)
+    if (sort && sort !== 'latest') params.set('sort', sort)
+    params.set('page', String(page))
+    params.set('pageSize', String(PAGE_SIZE))
+    const qs = params.toString()
+    return `/api/materials${qs ? `?${qs}` : ''}`
+  })()
+
+  const { data, error, loading, reload } = useApi<MaterialsPayload>(sessionKey, materialsPath, [materialsPath])
   const {
     data: subjects,
     error: subjectsError,
@@ -163,29 +195,9 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
     [data],
   )
 
-  const [query, setQuery] = useState('')
-  const foldersRef = useRef<HTMLDivElement | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
-  const [title, setTitle] = useState('')
-  const [subject, setSubject] = useState('')
-  const [description, setDescription] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [errors, setErrors] = useState<{ file?: string; title?: string; subject?: string }>({})
-
   const initialLoading = loading && !data
 
-  const filteredFiles = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return files
-    return files.filter(
-      (f) =>
-        f.name.toLowerCase().includes(q) ||
-        f.subject.toLowerCase().includes(q) ||
-        f.uploadedBy.toLowerCase().includes(q),
-    )
-  }, [files, query])
+  const filteredFiles = files
 
   const handleDownload = (file: StudyFile) => {
     if (file.downloadUrl) window.open(file.downloadUrl, '_blank', 'noopener')
@@ -222,7 +234,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
         method: 'POST',
         sessionKey,
         body: {
-          name: uploadFile.name,
+          name: title.trim() || uploadFile.name,
           subjectId: subject,
           fileType: guessFileType(uploadFile.name),
           sizeBytes: uploadFile.size,
@@ -348,11 +360,16 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
           ref={foldersRef}
           className="flex snap-x gap-4 overflow-x-auto pb-2 scrollbar-thin"
         >
+          <button type="button" onClick={() => { setSubjectFilter(null); setPage(1) }} className={cx('group flex w-[230px] shrink-0 snap-start items-center gap-3.5 rounded-2xl border p-4 text-left shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover', !subjectFilter ? 'border-primary bg-primary-light/50' : 'border-line bg-white hover:border-primary/30')}>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-light text-primary-dark group-hover:bg-primary group-hover:text-white"><FolderOpen size={22} aria-hidden="true" /></span>
+            <span className="min-w-0"><span className="block truncate text-sm font-semibold text-ink">All</span><span className="mt-0.5 block text-xs text-ink-soft">{stats?.totalFiles ?? 0} Files</span></span>
+          </button>
           {folders.map((folder) => (
             <button
-              key={folder.id}
+              key={folder.id ?? 'general'}
               type="button"
-              className="group flex w-[230px] shrink-0 snap-start items-center gap-3.5 rounded-2xl border border-line bg-white p-4 text-left shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-card-hover"
+              onClick={() => { setSubjectFilter(folder.id); setPage(1) }}
+              className={cx('group flex w-[230px] shrink-0 snap-start items-center gap-3.5 rounded-2xl border p-4 text-left shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover', subjectFilter === folder.id ? 'border-primary bg-primary-light/50' : 'border-line bg-white hover:border-primary/30')}
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-light text-primary-dark transition-colors duration-200 group-hover:bg-primary group-hover:text-white">
                 <FolderOpen size={22} aria-hidden="true" />
@@ -377,7 +394,8 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
             Sort by
             <select
               aria-label="Sort materials"
-              defaultValue="latest"
+              value={sort}
+              onChange={(e) => { setSort(e.target.value); setPage(1) }}
               className="h-9 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
             >
               <option value="latest">Latest First</option>
@@ -471,52 +489,28 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
           </p>
         )}
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-line px-5 py-4 sm:px-6">
-          <p className="text-xs text-ink-soft sm:text-sm">
-            Showing <strong className="text-ink">1–{filteredFiles.length}</strong> of{' '}
-            <strong className="text-ink">{files.length}</strong> files
-          </p>
-          <nav aria-label="Pagination" className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Previous page"
-              disabled
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft disabled:opacity-40"
-            >
-              <ChevronLeft size={15} aria-hidden="true" />
-            </button>
-            {[1, 2, 3].map((page) => (
-              <button
-                key={page}
-                type="button"
-                aria-current={page === 1 ? 'page' : undefined}
-                className={cx(
-                  'h-8 w-8 rounded-lg text-sm font-semibold transition-colors duration-200',
-                  page === 1
-                    ? 'bg-primary text-white'
-                    : 'text-ink-soft hover:bg-primary-light hover:text-primary-dark',
-                )}
-              >
-                {page}
-              </button>
-            ))}
-            <span className="px-1 text-sm text-ink-soft">…</span>
-            <button
-              type="button"
-              className="h-8 w-8 rounded-lg text-sm font-semibold text-ink-soft transition-colors duration-200 hover:bg-primary-light hover:text-primary-dark"
-            >
-              8
-            </button>
-            <button
-              type="button"
-              aria-label="Next page"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:text-primary"
-            >
-              <ChevronRight size={15} aria-hidden="true" />
-            </button>
-          </nav>
-        </div>
+        {/* Pagination — only when more than one page */}
+        {(() => {
+          const pagination = (data as any)?.pagination
+          const total: number = pagination?.total ?? filteredFiles.length
+          const totalPages: number = pagination?.totalPages ?? (total > PAGE_SIZE ? Math.ceil(total / PAGE_SIZE) : 1)
+          if (totalPages <= 1) return null
+          const start = (page - 1) * PAGE_SIZE + 1
+          const end = Math.min(page * PAGE_SIZE, total)
+          const pages: (number|string)[] = totalPages <=5 ? Array.from({length: totalPages}, (_,i)=>i+1) : page <=3 ? [1,2,3,'…', totalPages] : page >= totalPages-2 ? [1,'…', totalPages-2, totalPages-1, totalPages] : [1,'…', page-1, page, page+1, '…', totalPages]
+          return (
+            <div className="flex items-center justify-between border-t border-line px-5 py-4 sm:px-6">
+              <p className="text-xs text-ink-soft sm:text-sm">
+                Showing <strong className="text-ink">{start}–{end}</strong> of <strong className="text-ink">{total}</strong> files
+              </p>
+              <nav aria-label="Pagination" className="flex items-center gap-1">
+                <button type="button" aria-label="Previous page" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft disabled:opacity-40"><ChevronLeft size={15} aria-hidden="true" /></button>
+                {pages.map((p, idx)=> typeof p==='string' ? <span key={`e-${idx}`} className="px-1 text-sm text-ink-soft">…</span> : <button key={p} type="button" aria-current={p===page ? 'page':undefined} onClick={()=>setPage(p as number)} className={cx('h-8 w-8 rounded-lg text-sm font-semibold transition-colors duration-200', p===page ? 'bg-primary text-white':'text-ink-soft hover:bg-primary-light hover:text-primary-dark')}>{p}</button>)}
+                <button type="button" aria-label="Next page" disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft disabled:opacity-40 hover:border-primary/40 hover:text-primary"><ChevronRight size={15} aria-hidden="true" /></button>
+              </nav>
+            </div>
+          )
+        })()}
       </Card>
 
       {/* Upload dialog */}
