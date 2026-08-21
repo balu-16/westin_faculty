@@ -835,7 +835,7 @@ export function AdminTimetable() {
               }}
             />
           </div>
-          <div className="flex items-center gap-3 pb-0.5">
+          <div className="flex flex-wrap items-center gap-3 pb-0.5">
             <Button variant="secondary" onClick={() => setImportOpen(true)}>
               <FileSpreadsheet size={16} aria-hidden="true" />
               Import from Excel

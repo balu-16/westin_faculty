@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import westinLogo from '../assets/images/westin-logo.avif'
 import { CampusIllustration } from './CampusIllustration'
@@ -35,10 +35,26 @@ function SidebarContent({
   onNavigate,
 }: SidebarContentProps) {
   const width = collapsed ? 'w-[88px]' : 'w-[288px]'
+  // On mobile the drawer should not exceed viewport width (iPhone SE = 320px)
+  const responsiveWidth = collapsed ? width : 'w-[82vw] max-w-[288px] lg:w-[288px]'
   return (
-    <div className={cx('flex h-full shrink-0 flex-col bg-gradient-to-b from-[#4FB0F4] via-[#3BA7F2] to-[#168BE5]', width)}>
+    <div className={cx('flex h-full shrink-0 flex-col bg-gradient-to-b from-[#4FB0F4] via-[#3BA7F2] to-[#168BE5]', responsiveWidth)}>
+      {/* Mobile top bar inside drawer — hamburger to close (no X) */}
+      {onNavigate && (
+        <div className="flex items-center justify-between px-4 pt-3 pb-2 lg:hidden">
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/80">Menu</span>
+          <button
+            type="button"
+            onClick={onNavigate}
+            aria-label="Close navigation menu"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25"
+          >
+            <Menu size={18} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       {/* College logo + portal title */}
-      <div className={cx('pt-4', collapsed ? 'px-2' : 'px-4')}>
+      <div className={cx('pt-2 lg:pt-4', collapsed ? 'px-2' : 'px-4')}>
         <div className="rounded-2xl bg-white p-2.5 shadow-[0_6px_18px_rgba(20,33,61,0.08)]">
           <img
             src={westinLogo}
@@ -207,7 +223,7 @@ export function Sidebar({
         />
         <div
           className={cx(
-            'absolute inset-y-0 left-0 transition-transform duration-200 ease-out',
+            'absolute inset-y-0 left-0 w-[82vw] max-w-[288px] transition-transform duration-300 ease-out',
             open ? 'translate-x-0' : '-translate-x-full',
           )}
         >
@@ -220,14 +236,6 @@ export function Sidebar({
             onLogout={onLogout}
             onNavigate={onClose}
           />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close navigation menu"
-            className="absolute -right-11 top-4 flex h-9 w-9 items-center justify-center rounded-xl bg-white text-ink shadow-card"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
         </div>
       </div>
     </>

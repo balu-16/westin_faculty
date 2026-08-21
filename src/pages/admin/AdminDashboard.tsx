@@ -97,7 +97,7 @@ export function AdminDashboard() {
       {initialLoading ? (
         <SkeletonCards count={4} />
       ) : (
-      <section aria-label="Statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={Users}
           title="Total Faculty"
@@ -128,11 +128,11 @@ export function AdminDashboard() {
       )}
 
       {/* Activity + upcoming events */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <SectionCard
           title="Recent Activity"
           icon={<Activity size={18} className="text-primary" aria-hidden="true" />}
-          className="xl:col-span-3"
+          className="lg:col-span-3"
         >
           {initialLoading ? (
             <div role="status" aria-label="Loading activity" className="min-h-[200px] space-y-5">
@@ -162,7 +162,7 @@ export function AdminDashboard() {
           icon={<CalendarClock size={18} className="text-primary" aria-hidden="true" />}
           actionLabel="View All"
           actionTo="/admin/events"
-          className="xl:col-span-2"
+          className="lg:col-span-2"
         >
           {initialLoading ? (
             <div role="status" aria-label="Loading upcoming events" className="min-h-[180px] space-y-4">
@@ -215,7 +215,7 @@ export function AdminDashboard() {
 
       {/* Quick links */}
       <SectionCard title="Quick Links">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {adminQuickLinks.map((link) => (
             <QuickLink key={link.id} item={link} />
           ))}

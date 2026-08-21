@@ -286,7 +286,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
         subtitle={headerSubtitle}
         onMenuClick={openMenu}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search
                 size={15}
@@ -299,7 +299,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search materials..."
                 aria-label="Search materials"
-                className="h-10 w-44 rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:outline-none sm:w-56"
+                className="h-10 w-40 rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:outline-none sm:w-56"
               />
             </div>
             <button

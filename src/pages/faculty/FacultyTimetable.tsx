@@ -112,7 +112,7 @@ export function FacultyTimetable() {
               <ol className="relative">
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-2 left-[138px] top-2 w-px bg-line sm:left-[148px]"
+                  className="absolute bottom-2 left-[100px] top-2 w-px bg-line sm:left-[138px] lg:left-[148px]"
                 />
                 {classes.length > 0 ? (
                   classes.map((session) => <TimetableCard key={session.id} session={session} />)

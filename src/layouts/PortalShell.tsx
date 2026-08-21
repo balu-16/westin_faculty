@@ -4,6 +4,9 @@ import { Sidebar, type NavItem } from '../components/Sidebar'
 
 export interface PortalLayoutContext {
   openMenu: () => void
+  closeMenu: () => void
+  toggleMenu: () => void
+  isMenuOpen: boolean
   toggleSidebar: () => void
   collapsed: boolean
 }
@@ -74,7 +77,10 @@ export function PortalShell({
   }
 
   const toggleSidebar = () => setCollapsed((v) => !v)
-  const context: PortalLayoutContext = { openMenu: () => setMenuOpen(true), toggleSidebar, collapsed }
+  const openMenu = () => setMenuOpen(true)
+  const closeMenu = () => setMenuOpen(false)
+  const toggleMenu = () => setMenuOpen((v) => !v)
+  const context: PortalLayoutContext = { openMenu, closeMenu, toggleMenu, isMenuOpen: menuOpen, toggleSidebar, collapsed }
 
   const handleLogout = () => {
     onLogout()

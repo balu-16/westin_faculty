@@ -17,7 +17,7 @@ export function SubTabs({ tabs, active, onChange, ...rest }: SubTabsProps) {
   return (
     <div
       role="tablist"
-      className="flex w-fit gap-2 rounded-2xl border border-line bg-white p-2 shadow-card"
+      className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-line bg-white p-2 shadow-card scrollbar-thin"
       {...rest}
     >
       {tabs.map((tab) => {
@@ -30,7 +30,7 @@ export function SubTabs({ tabs, active, onChange, ...rest }: SubTabsProps) {
             aria-selected={isActive}
             onClick={() => onChange(tab.id)}
             className={cx(
-              'whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
+              'shrink-0 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
               isActive
                 ? 'bg-primary text-white shadow-[0_4px_12px_rgba(59,167,242,0.35)]'
                 : 'text-ink-soft hover:bg-primary-light hover:text-primary-dark',

@@ -79,7 +79,7 @@ export function FacultyDashboard() {
       {initialLoading ? (
         <SkeletonCards count={4} />
       ) : (
-      <section aria-label="Statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={CalendarDays}
           title="Classes Today"
@@ -110,13 +110,13 @@ export function FacultyDashboard() {
       )}
 
       {/* Timetable + pending reports */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <SectionCard
           title="Today's Schedule"
           icon={<CalendarDays size={18} className="text-primary" aria-hidden="true" />}
           actionLabel="View Full Timetable"
           actionTo="/faculty/timetable"
-          className="xl:col-span-3"
+          className="lg:col-span-3"
         >
           {initialLoading ? (
             <div role="status" aria-label="Loading today's classes" className="min-h-[220px] space-y-3">
@@ -131,7 +131,7 @@ export function FacultyDashboard() {
             <ol className="relative">
               <span
                 aria-hidden="true"
-                className="absolute bottom-2 left-[138px] top-2 w-px bg-line sm:left-[148px]"
+                className="absolute bottom-2 left-[100px] top-2 w-px bg-line sm:left-[138px] lg:left-[148px]"
               />
               {todaySessions.map((session) => (
                 <TimetableCard key={session.id} session={session} />
@@ -147,7 +147,7 @@ export function FacultyDashboard() {
           icon={<FileText size={18} className="text-primary" aria-hidden="true" />}
           actionLabel="Submit Report"
           actionTo="/faculty/reports"
-          className="xl:col-span-2"
+          className="lg:col-span-2"
         >
           {initialLoading ? (
             <div role="status" aria-label="Loading pending reports" className="min-h-[160px] space-y-6">
@@ -192,11 +192,11 @@ export function FacultyDashboard() {
       </div>
 
       {/* Announcements + Quick links */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <SectionCard
           title="Announcements"
           icon={<Megaphone size={18} className="text-primary" aria-hidden="true" />}
-          className="xl:col-span-3"
+          className="lg:col-span-3"
         >
           {initialLoading ? (
             <div role="status" aria-label="Loading announcements" className="min-h-[160px] space-y-6">
@@ -225,8 +225,8 @@ export function FacultyDashboard() {
           )}
         </SectionCard>
 
-        <SectionCard title="Quick Links" className="xl:col-span-2">
-          <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
+        <SectionCard title="Quick Links" className="lg:col-span-2">
+          <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
             {facultyQuickLinks.map((link) => (
               <QuickLink key={link.id} item={link} />
             ))}

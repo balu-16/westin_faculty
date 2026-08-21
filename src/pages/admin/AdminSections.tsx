@@ -406,7 +406,7 @@ export function AdminSections() {
         )}
       </Modal>
 
-      <p className="flex items-center justify-center gap-2 pb-2 text-xs text-ink-soft/70">
+      <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 pb-2 text-center text-xs text-ink-soft/70">
         <Users size={12} aria-hidden="true" />
         Click a section to view and manage its students
         <ChevronRight size={12} aria-hidden="true" />

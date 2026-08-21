@@ -295,7 +295,7 @@ export function LoginScreen({
           className="absolute right-0 top-0 h-56 w-56 rounded-full bg-primary-light blur-3xl lg:hidden"
         />
         <div className="relative w-full max-w-md animate-fade-in-up">
-          <div className="rounded-[20px] border border-line bg-white p-7 shadow-[0_8px_30px_rgba(20,33,61,0.06)] sm:p-9">
+          <div className="rounded-[20px] border border-line bg-white p-5 shadow-[0_8px_30px_rgba(20,33,61,0.06)] sm:p-9">
             <div
               className="mb-7 grid grid-cols-2 rounded-xl bg-primary-lighter/70 p-1"
               role="tablist"
@@ -386,7 +386,7 @@ export function LoginScreen({
               ) : (
                 <form onSubmit={handleVerify} noValidate>
                   {/* OTP boxes */}
-                  <div className="grid grid-cols-6 gap-2.5" role="group" aria-label="6-digit OTP">
+                  <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5" role="group" aria-label="6-digit OTP">
                     {digits.map((digit, i) => (
                       <input
                         key={i}

@@ -141,11 +141,11 @@ export function AdminNotificationsHistory() {
               className="h-9 w-full rounded-xl border border-line bg-white px-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-primary focus:outline-none"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-ink-soft" aria-hidden="true" />
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 rounded-xl border border-line bg-white px-3 text-sm focus:border-primary focus:outline-none" />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Calendar size={16} className="shrink-0 text-ink-soft" aria-hidden="true" />
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-9 w-full min-w-[120px] flex-1 rounded-xl border border-line bg-white px-3 text-sm focus:border-primary focus:outline-none sm:w-auto sm:flex-none" />
             <span className="text-sm text-ink-soft">—</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 rounded-xl border border-line bg-white px-3 text-sm focus:border-primary focus:outline-none" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-9 w-full min-w-[120px] flex-1 rounded-xl border border-line bg-white px-3 text-sm focus:border-primary focus:outline-none sm:w-auto sm:flex-none" />
           </div>
           <Button variant="secondary" size="sm" onClick={applyFilters}>
             Apply

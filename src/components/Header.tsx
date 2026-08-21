@@ -34,20 +34,23 @@ export function Header({
   } catch {}
   const effToggle = onToggleSidebar ?? outletCtx?.toggleSidebar
   const effCollapsed = collapsed ?? outletCtx?.collapsed
-  const effMenu = onMenuClick ?? outletCtx?.openMenu
+  // Prefer toggleMenu (open+close via hamburger) over openMenu for mobile; fallback to openMenu for compat
+  const effMenu = onMenuClick ?? outletCtx?.toggleMenu ?? outletCtx?.openMenu
+  const isMenuOpen = outletCtx?.isMenuOpen ?? false
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
-      <div className="min-w-0">
-        <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-ink sm:text-[1.7rem]">
+    <header className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+      <div className="min-w-0 flex-1">
+        <h1 className="flex items-center gap-2 sm:gap-2.5 text-xl font-bold tracking-tight text-ink sm:text-2xl lg:text-[1.7rem]">
           {effMenu && (
             <button
               type="button"
               onClick={effMenu}
-              aria-label="Open navigation menu"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:text-primary lg:hidden"
+              aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={isMenuOpen}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-ink-soft shadow-sm transition-colors duration-200 hover:text-primary lg:hidden"
             >
               <Menu size={20} aria-hidden="true" />
             </button>
@@ -71,22 +74,23 @@ export function Header({
             title
           )}
         </h1>
-        <p className={cx('mt-1 text-ink-soft', 'text-sm sm:text-base')}>{subtitle}</p>
+        {subtitle && <p className={cx('mt-1 text-ink-soft', 'text-xs sm:text-sm lg:text-base')}>{subtitle}</p>}
       </div>
 
       {actions ?? (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             aria-label="Notifications (1 unread)"
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:text-primary"
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:text-primary sm:h-10 sm:w-10"
           >
-            <Bell size={18} aria-hidden="true" />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary ring-2 ring-white" />
+            <Bell size={16} className="sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-white sm:right-2.5 sm:top-2.5" />
           </button>
-          <div className="flex h-10 items-center gap-2 rounded-xl border border-line bg-white px-4 text-sm font-medium text-ink-soft">
-            <CalendarDays size={16} className="text-primary" aria-hidden="true" />
-            <span>{(() => { try { return getTodayDateLabel() } catch { return todayDateLabel } })()}</span>
+          <div className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-white px-3 text-xs font-medium text-ink-soft sm:h-10 sm:gap-2 sm:px-4 sm:text-sm">
+            <CalendarDays size={14} className="text-primary sm:h-4 sm:w-4" aria-hidden="true" />
+            <span className="hidden sm:inline">{(() => { try { return getTodayDateLabel() } catch { return todayDateLabel } })()}</span>
+            <span className="sm:hidden">{(() => { try { return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) } catch { return todayDateLabel.slice(0,6) } })()}</span>
           </div>
         </div>
       )}
