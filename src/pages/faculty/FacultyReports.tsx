@@ -9,11 +9,13 @@ import { SkeletonRows } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, uploadBytes, useApi } from '../../lib/api'
-import { mapReport, type ApiReport, type ApiSubject } from '../../lib/mappers'
+import { mapReport, type ApiReport, type ApiSubject, type Paginated } from '../../lib/mappers'
 import { useSections } from '../../contexts/SectionsContext'
 import type { DailyReport } from '../../types'
 import { todayISO } from '../../utils'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
+
+const PAGE_SIZE = 10
 
 function FileLink({ report, onMissing }: { report: DailyReport; onMissing: () => void }) {
   return (
@@ -36,12 +38,20 @@ export function FacultyReports() {
   const toast = useToast()
   const { sections } = useSections()
 
-  const { data: reportsData, error, loading, reload } = useApi<ApiReport[]>(
+  const [page, setPage] = useState(1)
+
+  const { data: reportsData, error, loading, reload } = useApi<Paginated<ApiReport> | ApiReport[]>(
     'faculty-portal.session',
-    '/api/reports/mine',
+    `/api/reports/mine?page=${page}&pageSize=${PAGE_SIZE}`,
+    [page],
   )
   const { data: subjects } = useApi<ApiSubject[]>('faculty-portal.session', '/api/subjects')
-  const reports = (reportsData ?? []).map(mapReport)
+  const rows = (reportsData as Paginated<ApiReport>)?.rows ?? (reportsData as ApiReport[] | undefined) ?? []
+  // Handle legacy array shape: paginated envelope {rows,total} vs plain array
+  const reports = (Array.isArray(rows) ? rows : []).map(mapReport)
+  const total = (reportsData as Paginated<ApiReport>)?.total ?? reports.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const visible = reports.length
 
   const [sectionId, setSectionId] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -266,6 +276,37 @@ export function FacultyReports() {
             No reports submitted yet.
           </p>
         )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
+          <p className="text-xs text-ink-soft sm:text-sm">
+            Showing <strong className="text-ink">{visible}</strong> of{' '}
+            <strong className="text-ink">{total}</strong> reports
+          </p>
+          <nav aria-label="Reports pagination" className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              ‹ Prev
+            </Button>
+            <span className="px-1 text-sm font-medium text-ink-soft">
+              Page <strong className="text-ink">{page}</strong> of{' '}
+              <strong className="text-ink">{totalPages}</strong>
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              Next ›
+            </Button>
+          </nav>
+        </div>
       </Card>
     </div>
   )

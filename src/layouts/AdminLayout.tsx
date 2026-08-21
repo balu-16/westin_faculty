@@ -1,12 +1,16 @@
 import {
+  Bell,
   CalendarClock,
   CalendarDays,
   FileText,
   FolderOpen,
   GraduationCap,
+  History,
   Layers,
   LayoutDashboard,
+  Send,
   Settings,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react'
 import { PortalShell } from './PortalShell'
@@ -21,6 +25,16 @@ export const adminNavItems = [
   { label: 'Events', to: '/admin/events', icon: CalendarClock },
   { label: 'Study Materials', to: '/admin/materials', icon: FolderOpen },
   { label: 'Daily Reports', to: '/admin/reports', icon: FileText },
+  {
+    label: 'Notifications',
+    to: '/admin/notifications',
+    icon: Bell,
+    children: [
+      { label: 'Send Notification', to: '/admin/notifications/send', icon: Send },
+      { label: 'Notification History', to: '/admin/notifications/history', icon: History },
+      { label: 'My Notification Settings', to: '/admin/notifications/settings', icon: SlidersHorizontal },
+    ],
+  },
   { label: 'Settings', to: '/admin/settings', icon: Settings },
 ]
 

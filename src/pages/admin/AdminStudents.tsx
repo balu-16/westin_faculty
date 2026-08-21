@@ -157,6 +157,7 @@ export function AdminStudents() {
   if (sectionFilter !== 'all') searchParams.set('sectionId', sectionFilter)
   if (search) searchParams.set('search', search)
   searchParams.set('page', String(page))
+  searchParams.set('pageSize', '10')
   const listPath = `/api/admin/students?${searchParams.toString()}`
   const { data, error, loading, reload } = useApi<Paginated<ApiStudent>>(
     'admin-portal.session',
@@ -165,7 +166,7 @@ export function AdminStudents() {
   )
   const rows = useMemo(() => (data?.rows ?? []).map(mapStudent), [data])
   const total = data?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(total / (data?.pageSize ?? 50)))
+  const totalPages = Math.max(1, Math.ceil(total / (data?.pageSize ?? 10)))
 
   const {
     data: loginLogsData,

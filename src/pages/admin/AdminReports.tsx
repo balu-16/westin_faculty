@@ -102,6 +102,7 @@ export function AdminReports() {
   if (fromDate) searchParams.set('from', fromDate)
   if (toDate) searchParams.set('to', toDate)
   searchParams.set('page', String(page))
+  searchParams.set('pageSize', '10')
   const listPath = `/api/reports?${searchParams.toString()}`
   const { data, error, loading, reload } = useApi<Paginated<ApiReport>>('admin-portal.session', listPath, [
     search,
@@ -112,7 +113,7 @@ export function AdminReports() {
   ])
   const filtered = useMemo(() => (data?.rows ?? []).map(mapReport), [data])
   const total = data?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(total / (data?.pageSize ?? 50)))
+  const totalPages = Math.max(1, Math.ceil(total / (data?.pageSize ?? 10)))
 
   const handleFilterReset = (e: FormEvent) => {
     e.preventDefault()

@@ -17,6 +17,7 @@ import {
   type SessionKey,
 } from '../lib/api'
 import type { FacultyUser } from '../types'
+import { identifyAndPrompt, logoutOneSignalUser } from '../lib/onesignal'
 
 const STORAGE_KEY: SessionKey = 'faculty-portal.session'
 
@@ -77,6 +78,8 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toFacultyUser(data.user))
+    // OneSignal: identify after OTP verify — faculty_<users.id>, prompt permission post-login
+    void identifyAndPrompt({ id: data.user.id, role: 'faculty' }).catch(() => undefined)
   }, [])
 
   const logout = useCallback(() => {
@@ -88,6 +91,8 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
         sessionKey: STORAGE_KEY,
       }).catch(() => undefined)
     }
+    // OneSignal: unlink device before clearing session (shared-browser isolation)
+    void logoutOneSignalUser().catch(() => undefined)
     clearSession(STORAGE_KEY)
     clearApiCache()
     setUser(null)

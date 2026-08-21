@@ -29,7 +29,7 @@ interface SettingsPayload {
   email: boolean
   announcements: boolean
   reminders: boolean
-  theme: string
+  theme?: string
 }
 
 export function FacultySettings() {
@@ -50,7 +50,6 @@ export function FacultySettings() {
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [announcementsOn, setAnnouncementsOn] = useState(true)
   const [reportReminders, setReportReminders] = useState(true)
-  const [lightTheme, setLightTheme] = useState(true)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -60,7 +59,6 @@ export function FacultySettings() {
     setEmailEnabled(settings.email)
     setAnnouncementsOn(settings.announcements)
     setReportReminders(settings.reminders)
-    setLightTheme((settings.theme ?? 'light') === 'light')
   }, [settings])
 
   const handleSave = async (e: FormEvent) => {
@@ -75,7 +73,6 @@ export function FacultySettings() {
           email: emailEnabled,
           announcements: announcementsOn,
           reminders: reportReminders,
-          theme: lightTheme ? 'light' : 'dark',
         },
       })
       setSaved(true)
@@ -217,30 +214,15 @@ export function FacultySettings() {
           </div>
         </Card>
 
-        {/* Appearance + Security */}
-        <div className="space-y-6">
-          <Card>
-            <h2 className="mb-4 text-base font-semibold text-ink">Appearance</h2>
-            <div className="divide-y divide-line">
-              <Toggle
-                label="Light theme"
-                description="The portal uses a light sky-blue theme by default."
-                checked={lightTheme}
-                onChange={setLightTheme}
-              />
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="mb-4 text-base font-semibold text-ink">Security</h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="ghost" onClick={handleLogout} className="text-danger hover:bg-danger/10 hover:text-danger">
-                <LogOut size={16} aria-hidden="true" />
-                Logout
-              </Button>
-            </div>
-          </Card>
-        </div>
+        <Card>
+          <h2 className="mb-4 text-base font-semibold text-ink">Security</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="ghost" onClick={handleLogout} className="text-danger hover:bg-danger/10 hover:text-danger">
+              <LogOut size={16} aria-hidden="true" />
+              Logout
+            </Button>
+          </div>
+        </Card>
       </div>
 
       <p className="flex items-center justify-center gap-2 pb-2 text-xs text-ink-soft/70">

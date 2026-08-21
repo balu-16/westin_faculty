@@ -138,7 +138,7 @@ export function AdminTeachers() {
   const [page, setPage] = useState(1)
   const { data: teachersData, loading, error, reload } = useApi<Paginated<ApiTeacher>>(
     'admin-portal.session',
-    `/api/admin/teachers?page=${page}`,
+    `/api/admin/teachers?page=${page}&pageSize=10`,
     [page],
   )
   const {
@@ -156,7 +156,7 @@ export function AdminTeachers() {
   const rows = useMemo(() => (teachersData?.rows ?? []).map(mapTeacher), [teachersData])
   const loginLogs = useMemo(() => (loginLogsData ?? []).map(mapLoginLog), [loginLogsData])
   const total = teachersData?.total ?? 0
-  const totalPages = Math.max(1, Math.ceil(total / (teachersData?.pageSize ?? 50)))
+  const totalPages = Math.max(1, Math.ceil(total / (teachersData?.pageSize ?? 10)))
 
   const [tab, setTab] = useState('list')
   const [query, setQuery] = useState('')

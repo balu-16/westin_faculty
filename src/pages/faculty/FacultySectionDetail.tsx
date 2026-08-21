@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft, Layers, User, Users } from 'lucide-react'
 import { Header } from '../../components/Header'
@@ -10,6 +11,8 @@ import { useApi } from '../../lib/api'
 import { useSections } from '../../contexts/SectionsContext'
 import type { ApiWeekDay } from '../../lib/mappers'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
+
+const PAGE_SIZE = 10
 
 interface RosterStudent {
   id: string
@@ -42,6 +45,22 @@ export function FacultySectionDetail() {
     '/api/timetable/faculty/mine',
   )
   const roster = rosterData ?? []
+  const [page, setPage] = useState(1)
+  const total = roster.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const visible = roster.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const end = Math.min(page * PAGE_SIZE, total)
+  void start
+  void end
+
+  useEffect(() => {
+    setPage(1)
+  }, [roster.length])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   if (sectionsError && sections.length === 0) {
     return (
@@ -161,7 +180,7 @@ export function FacultySectionDetail() {
               </tr>
             </thead>
             <tbody>
-              {roster.map((student) => (
+              {visible.map((student) => (
                 <tr
                   key={student.id}
                   className="border-b border-line/70 transition-colors duration-150 last:border-0 hover:bg-primary-lighter/60"
@@ -189,6 +208,37 @@ export function FacultySectionDetail() {
             No students allocated to {section.name} yet.
           </p>
         )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
+          <p className="text-xs text-ink-soft sm:text-sm">
+            Showing <strong className="text-ink">{visible.length}</strong> of{' '}
+            <strong className="text-ink">{total}</strong> students
+          </p>
+          <nav aria-label="Students pagination" className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-ink hover:border-primary/40 hover:bg-primary-lighter disabled:pointer-events-none disabled:opacity-40"
+            >
+              ‹ Prev
+            </button>
+            <span className="px-1 text-sm font-medium text-ink-soft">
+              Page <strong className="text-ink">{page}</strong> of{' '}
+              <strong className="text-ink">{totalPages}</strong>
+            </span>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-ink hover:border-primary/40 hover:bg-primary-lighter disabled:pointer-events-none disabled:opacity-40"
+            >
+              Next ›
+            </button>
+          </nav>
+        </div>
       </Card>
     </div>
   )

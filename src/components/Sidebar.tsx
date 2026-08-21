@@ -10,6 +10,7 @@ export interface NavItem {
   label: string
   to: string
   icon: LucideIcon
+  children?: NavItem[]
 }
 
 interface SidebarContentProps {
@@ -57,30 +58,80 @@ function SidebarContent({
         {collapsed && <div className="mx-2 mt-3 h-px bg-white/25" role="presentation" />}
       </div>
 
-      {/* Navigation */}
+      {/* Navigation — modular: supports optional collapsible children (e.g., Notifications → Send/History/Settings) */}
       <nav aria-label="Portal navigation" className={cx('flex-1 overflow-y-auto scrollbar-thin', collapsed ? 'space-y-1 px-2' : 'space-y-1 px-4')}>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end
-            onClick={onNavigate}
-            title={collapsed ? item.label : undefined}
-            aria-label={collapsed ? item.label : undefined}
-            className={({ isActive }) =>
-              cx(
-                'flex h-[52px] items-center rounded-xl text-base font-semibold transition-all duration-200',
-                collapsed ? 'justify-center px-2' : 'gap-2.5 px-4',
-                isActive
-                  ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]'
-                  : 'text-white/90 hover:bg-white/15 hover:text-white',
-              )
-            }
-          >
-            <item.icon size={21} aria-hidden="true" />
-            {!collapsed && item.label}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const hasChildren = Array.isArray(item.children) && item.children.length > 0
+          if (hasChildren && collapsed) {
+            // Collapsed: show parent icon linking to first child, plus children icons underneath
+            return (
+              <div key={item.to} className="space-y-1">
+                <NavLink
+                  to={item.children![0].to}
+                  onClick={onNavigate}
+                  title={item.label}
+                  aria-label={item.label}
+                  className={({ isActive }) =>
+                    cx(
+                      'flex h-[52px] items-center justify-center rounded-xl text-base font-semibold transition-all duration-200',
+                      isActive ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]' : 'text-white/90 hover:bg-white/15 hover:text-white',
+                    )
+                  }
+                >
+                  <item.icon size={21} aria-hidden="true" />
+                </NavLink>
+              </div>
+            )
+          }
+          if (hasChildren) {
+            return (
+              <div key={item.to} className="space-y-1">
+                <p className="px-4 pt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white/70">{item.label}</p>
+                {item.children!.map((child) => (
+                  <NavLink
+                    key={child.to}
+                    to={child.to}
+                    end
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cx(
+                        'flex h-[44px] items-center gap-2.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200',
+                        isActive
+                          ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]'
+                          : 'text-white/90 hover:bg-white/15 hover:text-white',
+                      )
+                    }
+                  >
+                    <child.icon size={18} aria-hidden="true" />
+                    {child.label}
+                  </NavLink>
+                ))}
+              </div>
+            )
+          }
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end
+              onClick={onNavigate}
+              title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
+              className={({ isActive }) =>
+                cx(
+                  'flex h-[52px] items-center rounded-xl text-base font-semibold transition-all duration-200',
+                  collapsed ? 'justify-center px-2' : 'gap-2.5 px-4',
+                  isActive
+                    ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]'
+                    : 'text-white/90 hover:bg-white/15 hover:text-white',
+                )
+              }
+            >
+              <item.icon size={21} aria-hidden="true" />
+              {!collapsed && item.label}
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Campus illustration fading into the sidebar */}

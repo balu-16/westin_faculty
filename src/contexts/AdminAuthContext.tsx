@@ -17,6 +17,7 @@ import {
   type SessionKey,
 } from '../lib/api'
 import type { AdminUser } from '../types'
+import { identifyAndPrompt, logoutOneSignalUser } from '../lib/onesignal'
 
 const STORAGE_KEY: SessionKey = 'admin-portal.session'
 
@@ -76,6 +77,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toAdminUser(data.user))
+    // OneSignal: admin_<users.id>, handles shared-browser logout-before-login internally
+    void identifyAndPrompt({ id: data.user.id, role: 'admin' }).catch(() => undefined)
   }, [])
 
   const logout = useCallback(() => {
@@ -87,6 +90,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         sessionKey: STORAGE_KEY,
       }).catch(() => undefined)
     }
+    void logoutOneSignalUser().catch(() => undefined)
     clearSession(STORAGE_KEY)
     clearApiCache()
     setUser(null)

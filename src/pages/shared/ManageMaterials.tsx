@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
-  ChevronLeft,
   ChevronRight,
   Download,
   FileText,
@@ -155,7 +154,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState('latest')
   const [subjectFilter, setSubjectFilter] = useState<string | null>(null)
-  const PAGE_SIZE = 20
+  const PAGE_SIZE = 10
   const foldersRef = useRef<HTMLDivElement | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -489,24 +488,21 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
           </p>
         )}
 
-        {/* Pagination — only when more than one page */}
+        {/* Pagination — always visible */}
         {(() => {
           const pagination = (data as any)?.pagination
           const total: number = pagination?.total ?? filteredFiles.length
-          const totalPages: number = pagination?.totalPages ?? (total > PAGE_SIZE ? Math.ceil(total / PAGE_SIZE) : 1)
-          if (totalPages <= 1) return null
-          const start = (page - 1) * PAGE_SIZE + 1
-          const end = Math.min(page * PAGE_SIZE, total)
-          const pages: (number|string)[] = totalPages <=5 ? Array.from({length: totalPages}, (_,i)=>i+1) : page <=3 ? [1,2,3,'…', totalPages] : page >= totalPages-2 ? [1,'…', totalPages-2, totalPages-1, totalPages] : [1,'…', page-1, page, page+1, '…', totalPages]
+          const totalPages: number = pagination?.totalPages ?? Math.max(1, Math.ceil(total / PAGE_SIZE))
+          const visible = filteredFiles.length
           return (
-            <div className="flex items-center justify-between border-t border-line px-5 py-4 sm:px-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
               <p className="text-xs text-ink-soft sm:text-sm">
-                Showing <strong className="text-ink">{start}–{end}</strong> of <strong className="text-ink">{total}</strong> files
+                Showing <strong className="text-ink">{visible}</strong> of <strong className="text-ink">{total}</strong> files
               </p>
-              <nav aria-label="Pagination" className="flex items-center gap-1">
-                <button type="button" aria-label="Previous page" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft disabled:opacity-40"><ChevronLeft size={15} aria-hidden="true" /></button>
-                {pages.map((p, idx)=> typeof p==='string' ? <span key={`e-${idx}`} className="px-1 text-sm text-ink-soft">…</span> : <button key={p} type="button" aria-current={p===page ? 'page':undefined} onClick={()=>setPage(p as number)} className={cx('h-8 w-8 rounded-lg text-sm font-semibold transition-colors duration-200', p===page ? 'bg-primary text-white':'text-ink-soft hover:bg-primary-light hover:text-primary-dark')}>{p}</button>)}
-                <button type="button" aria-label="Next page" disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="flex h-8 w-8 items-center justify-center rounded-lg border border-line text-ink-soft disabled:opacity-40 hover:border-primary/40 hover:text-primary"><ChevronRight size={15} aria-hidden="true" /></button>
+              <nav aria-label="Pagination" className="flex items-center gap-2">
+                <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-primary/40 hover:text-primary disabled:opacity-40">‹ Prev</button>
+                <span className="text-sm text-ink-soft">Page <strong className="text-ink">{page}</strong> of <strong className="text-ink">{totalPages}</strong></span>
+                <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-ink-soft hover:border-primary/40 hover:text-primary disabled:opacity-40">Next ›</button>
               </nav>
             </div>
           )

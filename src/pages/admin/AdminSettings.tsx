@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { LogOut, ShieldCheck, User } from 'lucide-react'
+import { BellRing, LogOut, ShieldCheck, User } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Header } from '../../components/Header'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -28,7 +29,7 @@ interface SettingsPayload {
   email: boolean
   announcements: boolean
   reminders: boolean
-  theme: string
+  theme?: string
 }
 
 export function AdminSettings() {
@@ -48,7 +49,6 @@ export function AdminSettings() {
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [eventAlerts, setEventAlerts] = useState(true)
   const [reportDigest, setReportDigest] = useState(true)
-  const [lightTheme, setLightTheme] = useState(true)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -58,7 +58,6 @@ export function AdminSettings() {
     setEmailEnabled(settings.email)
     setEventAlerts(settings.announcements)
     setReportDigest(settings.reminders)
-    setLightTheme((settings.theme ?? 'light') === 'light')
   }, [settings])
 
   const handleSave = async (e: FormEvent) => {
@@ -73,7 +72,6 @@ export function AdminSettings() {
           email: emailEnabled,
           announcements: eventAlerts,
           reminders: reportDigest,
-          theme: lightTheme ? 'light' : 'dark',
         },
       })
       setSaved(true)
@@ -175,7 +173,17 @@ export function AdminSettings() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Notifications */}
         <Card>
-          <h2 className="mb-4 text-base font-semibold text-ink">Notifications</h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-ink">Notifications</h2>
+            <Link to="/admin/notifications/settings" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark">
+              <BellRing size={14} aria-hidden="true" />
+              Notification Settings
+            </Link>
+          </div>
+          <p className="mb-4 rounded-xl border border-line bg-amber-50 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+            Push via OneSignal (site https://westin-faculty.vercel.app). To receive admin broadcasts, enable it in{' '}
+            <Link to="/admin/notifications/settings" className="font-semibold text-primary-dark hover:text-primary">Notifications → My Settings</Link>.
+          </p>
           <div className="divide-y divide-line">
             <Toggle
               label="Push notifications"
@@ -204,30 +212,15 @@ export function AdminSettings() {
           </div>
         </Card>
 
-        {/* Appearance + Security */}
-        <div className="space-y-6">
-          <Card>
-            <h2 className="mb-4 text-base font-semibold text-ink">Appearance</h2>
-            <div className="divide-y divide-line">
-              <Toggle
-                label="Light theme"
-                description="The portal uses a light sky-blue theme by default."
-                checked={lightTheme}
-                onChange={setLightTheme}
-              />
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="mb-4 text-base font-semibold text-ink">Security</h2>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="ghost" onClick={handleLogout} className="text-danger hover:bg-danger/10 hover:text-danger">
-                <LogOut size={16} aria-hidden="true" />
-                Logout
-              </Button>
-            </div>
-          </Card>
-        </div>
+        <Card>
+          <h2 className="mb-4 text-base font-semibold text-ink">Security</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="ghost" onClick={handleLogout} className="text-danger hover:bg-danger/10 hover:text-danger">
+              <LogOut size={16} aria-hidden="true" />
+              Logout
+            </Button>
+          </div>
+        </Card>
       </div>
 
       <p className="flex items-center justify-center gap-2 pb-2 text-xs text-ink-soft/70">

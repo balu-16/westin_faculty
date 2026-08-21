@@ -33,6 +33,9 @@ const AdminEvents = lazy(() => import('./pages/admin/AdminEvents').then((m) => (
 const AdminMaterials = lazy(() => import('./pages/admin/AdminMaterials').then((m) => ({ default: m.AdminMaterials })))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports').then((m) => ({ default: m.AdminReports })))
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((m) => ({ default: m.AdminSettings })))
+const AdminNotificationsSend = lazy(() => import('./pages/admin/AdminNotificationsSend').then((m) => ({ default: m.AdminNotificationsSend })))
+const AdminNotificationsHistory = lazy(() => import('./pages/admin/AdminNotificationsHistory').then((m) => ({ default: m.AdminNotificationsHistory })))
+const AdminNotificationsSettings = lazy(() => import('./pages/admin/AdminNotificationsSettings').then((m) => ({ default: m.AdminNotificationsSettings })))
 
 /** Lightweight full-page spinner for the standalone login screens (no shell). */
 function LoginFallback() {
@@ -105,6 +108,11 @@ export default function App() {
                 <Route path="events" element={<Suspense fallback={<PageFallback />}><AdminEvents /></Suspense>} />
                 <Route path="materials" element={<Suspense fallback={<PageFallback />}><AdminMaterials /></Suspense>} />
                 <Route path="reports" element={<Suspense fallback={<PageFallback />}><AdminReports /></Suspense>} />
+                <Route path="notifications/send" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSend /></Suspense>} />
+                <Route path="notifications/history" element={<Suspense fallback={<PageFallback />}><AdminNotificationsHistory /></Suspense>} />
+                <Route path="notifications/settings" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSettings /></Suspense>} />
+                {/* Back-compat: /admin/notifications → send */}
+                <Route path="notifications" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSend /></Suspense>} />
                 <Route path="settings" element={<Suspense fallback={<PageFallback />}><AdminSettings /></Suspense>} />
               </Route>
 

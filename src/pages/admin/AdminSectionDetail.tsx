@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRightLeft, CheckCircle2, Layers, User, Users } from 'lucide-react'
 import { Header } from '../../components/Header'
@@ -16,6 +16,8 @@ import { attendanceHealth, cx, healthClasses } from '../../utils'
 import type { StudentRow } from '../../types'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
+const PAGE_SIZE = 10
+
 export function AdminSectionDetail() {
   const { openMenu } = useOutletContext<PortalLayoutContext>()
   const toast = useToast()
@@ -30,6 +32,22 @@ export function AdminSectionDetail() {
   const [moving, setMoving] = useState<StudentRow | null>(null)
   const [targetSection, setTargetSection] = useState('')
   const [moveBusy, setMoveBusy] = useState(false)
+  const [page, setPage] = useState(1)
+  const total = roster.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const visible = roster.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const end = Math.min(page * PAGE_SIZE, total)
+  void start
+  void end
+
+  useEffect(() => {
+    setPage(1)
+  }, [roster.length])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   if (error && sections.length === 0) {
     return (
@@ -161,7 +179,7 @@ export function AdminSectionDetail() {
               </tr>
             </thead>
             <tbody>
-              {roster.map((student) => {
+              {visible.map((student) => {
                 const meta = healthClasses(attendanceHealth(student.attendance))
                 return (
                   <tr
@@ -201,6 +219,37 @@ export function AdminSectionDetail() {
             No students allocated to {section.name} yet.
           </p>
         )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
+          <p className="text-xs text-ink-soft sm:text-sm">
+            Showing <strong className="text-ink">{visible.length}</strong> of{' '}
+            <strong className="text-ink">{total}</strong> students
+          </p>
+          <nav aria-label="Students pagination" className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              ‹ Prev
+            </Button>
+            <span className="px-1 text-sm font-medium text-ink-soft">
+              Page <strong className="text-ink">{page}</strong> of{' '}
+              <strong className="text-ink">{totalPages}</strong>
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              Next ›
+            </Button>
+          </nav>
+        </div>
       </Card>
 
       {/* Move student dialog */}

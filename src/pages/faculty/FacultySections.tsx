@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ChevronRight, Layers } from 'lucide-react'
 import { Header } from '../../components/Header'
@@ -6,6 +7,8 @@ import { SkeletonRows } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useSections } from '../../contexts/SectionsContext'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
+
+const PAGE_SIZE = 10
 
 /**
  * Read-only section browser. The list comes from /api/faculty/me/sections via
@@ -16,6 +19,22 @@ export function FacultySections() {
   const navigate = useNavigate()
   const { sections, loading, error, reload } = useSections()
   const initialLoading = loading && sections.length === 0
+  const [page, setPage] = useState(1)
+  const total = sections.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const visible = sections.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const end = Math.min(page * PAGE_SIZE, total)
+  void start
+  void end
+
+  useEffect(() => {
+    setPage(1)
+  }, [sections.length])
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
 
   return (
     <div className="space-y-6">
@@ -54,7 +73,7 @@ export function FacultySections() {
               </tr>
             </thead>
             <tbody>
-              {sections.map((section) => (
+              {visible.map((section) => (
                 <tr
                   key={section.id}
                   onClick={() => navigate(`/faculty/sections/${section.id}`)}
@@ -92,6 +111,37 @@ export function FacultySections() {
             No sections assigned to your timetable yet.
           </p>
         )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
+          <p className="text-xs text-ink-soft sm:text-sm">
+            Showing <strong className="text-ink">{visible.length}</strong> of{' '}
+            <strong className="text-ink">{total}</strong> sections
+          </p>
+          <nav aria-label="Sections pagination" className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-ink hover:border-primary/40 hover:bg-primary-lighter disabled:pointer-events-none disabled:opacity-40"
+            >
+              ‹ Prev
+            </button>
+            <span className="px-1 text-sm font-medium text-ink-soft">
+              Page <strong className="text-ink">{page}</strong> of{' '}
+              <strong className="text-ink">{totalPages}</strong>
+            </span>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-medium text-ink hover:border-primary/40 hover:bg-primary-lighter disabled:pointer-events-none disabled:opacity-40"
+            >
+              Next ›
+            </button>
+          </nav>
+        </div>
       </Card>
     </div>
   )
