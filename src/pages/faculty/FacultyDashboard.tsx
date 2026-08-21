@@ -6,6 +6,7 @@ import {
   Layers,
   Megaphone,
 } from 'lucide-react'
+import { PushPermissionBanner } from '../../components/PushPermissionBanner'
 import { Header } from '../../components/Header'
 import { StatCard } from '../../components/StatCard'
 import { TimetableCard } from '../../components/TimetableCard'
@@ -68,6 +69,7 @@ export function FacultyDashboard() {
         showGreeting
         firstName={user?.firstName}
       />
+      <PushPermissionBanner />
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />

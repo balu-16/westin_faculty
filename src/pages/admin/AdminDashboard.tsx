@@ -23,6 +23,7 @@ import { mapActivityIcon, mapEvent, type ApiEvent } from '../../lib/mappers'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import type { ActivityItem, QuickLinkItem } from '../../types'
 import { timeAgo } from '../../utils'
+import { PushPermissionBanner } from '../../components/PushPermissionBanner'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 const adminQuickLinks: QuickLinkItem[] = [
@@ -86,6 +87,7 @@ export function AdminDashboard() {
         showGreeting
         firstName={user?.firstName}
       />
+      <PushPermissionBanner />
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />

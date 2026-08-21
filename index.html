@@ -15,18 +15,21 @@
       rel="stylesheet"
     />
     <title>Westin College — Faculty &amp; Admin Portal</title>
-    <!-- OneSignal Web Push — SDK + init (Site URL: https://westin-faculty.vercel.app). Auto-prompt disabled; -->
-    <!-- permission is requested post-login via OneSignalDeferred in src/lib/onesignal.ts. -->
+    <!-- OneSignal Web Push — Site URL https://westin-faculty.vercel.app (shared faculty+admin deployment) -->
+    <!-- Custom Code setup: NO auto-prompt. Permission is requested AFTER login via a user gesture (Settings toggle / post-login banner), never on page load. -->
+    <!-- If you see "Permission blocked" here, the dashboard is still on Typical Site auto-prompt — switch it to Custom Code and remove any dashboard prompts. -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       OneSignalDeferred.push(async function (OneSignal) {
+        // Disable all auto prompts — we trigger push opt-in manually after login.
         await OneSignal.init({
           appId: "88500375-185d-4ea7-b3fc-bf32b8280b3b",
           allowLocalhostAsSecureOrigin: true,
           notifyButton: { enable: false },
-          // No auto-prompt categories — prompt is triggered programmatically after OTP login
           promptOptions: { slidedown: { prompts: [] } },
+          welcomeNotification: { disable: true },
+          autoResubscribe: false,
         });
       });
     </script>

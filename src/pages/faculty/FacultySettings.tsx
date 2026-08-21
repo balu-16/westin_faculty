@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { Briefcase, LogOut, User } from 'lucide-react'
+import { BellOff, Briefcase, LogOut, User } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -11,6 +11,8 @@ import { Avatar } from '../../components/Avatar'
 import { apiFetch, uploadBytes, useApi } from '../../lib/api'
 import { useFacultyAuth } from '../../contexts/FacultyAuthContext'
 import { useSections } from '../../contexts/SectionsContext'
+import { useToast } from '../../components/Toast'
+import { getOneSignalState, subscribeOneSignal, unsubscribeOneSignal } from '../../lib/onesignal'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -36,6 +38,7 @@ export function FacultySettings() {
   const { openMenu, toggleSidebar, collapsed } = useOutletContext<PortalLayoutContext>()
   const { user, logout, updateAvatar } = useFacultyAuth()
   const { sections } = useSections()
+  const toast = useToast()
   const navigate = useNavigate()
   const { data: settings, error, loading, reload } = useApi<SettingsPayload>(
     'faculty-portal.session',
@@ -52,6 +55,9 @@ export function FacultySettings() {
   const [reportReminders, setReportReminders] = useState(true)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushSupported, setPushSupported] = useState(true)
+  const [pushBlocked, setPushBlocked] = useState(false)
 
   useEffect(() => {
     if (!settings) return
@@ -60,6 +66,87 @@ export function FacultySettings() {
     setAnnouncementsOn(settings.announcements)
     setReportReminders(settings.reminders)
   }, [settings])
+
+  useEffect(() => {
+    let cancelled = false
+    const sync = async () => {
+      try {
+        const state = await getOneSignalState()
+        if (cancelled) return
+        setPushSupported(state.isSupported)
+        setPushBlocked(state.permissionNative === 'denied')
+        if (state.permissionNative === 'denied') setPushEnabled(false)
+        else if (!state.isSupported) setPushEnabled(false)
+        else if (settings) setPushEnabled(state.optedIn)
+      } catch {}
+    }
+    sync()
+    const onFocus = () => sync()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') sync()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [settings])
+
+  const handlePushToggle = async (next: boolean) => {
+    if (pushBusy) return
+    setPushBusy(true)
+    try {
+      if (next) {
+        const state = await getOneSignalState()
+        if (!state.isSupported) {
+          toast.danger('Push not supported in this browser — try Chrome/Edge/Firefox (not incognito).')
+          setPushEnabled(false)
+          return
+        }
+        if (state.permissionNative === 'denied') {
+          setPushBlocked(true)
+          setPushEnabled(false)
+          toast.danger('Permission blocked — click the lock icon → Reset permission → Reload.')
+          return
+        }
+        const ok = await subscribeOneSignal()
+        const after = await getOneSignalState()
+        if (ok && after.optedIn) {
+          setPushEnabled(true)
+          setPushBlocked(false)
+          await apiFetch('/api/settings', {
+            method: 'PATCH',
+            sessionKey: 'faculty-portal.session',
+            body: { push: true, email: emailEnabled, announcements: announcementsOn, reminders: reportReminders },
+          }).catch(() => undefined)
+          toast.success('Push notifications enabled on this device.')
+        } else {
+          const st2 = await getOneSignalState()
+          if (st2.permissionNative === 'denied') {
+            setPushBlocked(true)
+            toast.danger('Permission denied — enable in browser settings.')
+          } else {
+            toast.danger('Permission dismissed — enable again anytime in Settings.')
+          }
+          setPushEnabled(false)
+        }
+      } else {
+        await unsubscribeOneSignal()
+        setPushEnabled(false)
+        setPushBlocked(false)
+        await apiFetch('/api/settings', {
+          method: 'PATCH',
+          sessionKey: 'faculty-portal.session',
+          body: { push: false, email: emailEnabled, announcements: announcementsOn, reminders: reportReminders },
+        }).catch(() => undefined)
+        toast.success('Push notifications disabled on this device.')
+      }
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
@@ -186,12 +273,22 @@ export function FacultySettings() {
         {/* Notifications */}
         <Card>
           <h2 className="mb-4 text-base font-semibold text-ink">Notifications</h2>
+          {!pushSupported && (
+            <p className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <BellOff size={14} aria-hidden="true" /> Push not supported in this browser (try Chrome/Edge/Firefox, not incognito).
+            </p>
+          )}
+          {pushBlocked && (
+            <p className="mb-3 flex items-center gap-2 rounded-xl bg-danger/10 px-3 py-2 text-xs text-danger">
+              <BellOff size={14} aria-hidden="true" /> Permission blocked — click the lock icon → Site settings → Reset permission → Reload, then toggle again.
+            </p>
+          )}
           <div className="divide-y divide-line">
             <Toggle
               label="Push notifications"
-              description="Receive alerts on your device."
+              description={pushBlocked ? 'Blocked in browser — reset permission to enable.' : pushBusy ? 'Updating subscription…' : 'Receive alerts on your device. (Toggle subscribes/unsubscribes this browser)'}
               checked={pushEnabled}
-              onChange={setPushEnabled}
+              onChange={handlePushToggle}
             />
             <Toggle
               label="Email notifications"

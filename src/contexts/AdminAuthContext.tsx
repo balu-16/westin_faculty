@@ -17,7 +17,7 @@ import {
   type SessionKey,
 } from '../lib/api'
 import type { AdminUser } from '../types'
-import { identifyAndPrompt, logoutOneSignalUser } from '../lib/onesignal'
+import { identifyOneSignalUser, logoutOneSignalUser } from '../lib/onesignal'
 
 const STORAGE_KEY: SessionKey = 'admin-portal.session'
 
@@ -77,8 +77,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toAdminUser(data.user))
-    // OneSignal: admin_<users.id>, handles shared-browser logout-before-login internally
-    void identifyAndPrompt({ id: data.user.id, role: 'admin' }).catch(() => undefined)
+    // Identify only — permission is requested via user gesture (banner / Settings toggle) to avoid "Permission blocked".
+    void identifyOneSignalUser({ id: data.user.id, role: 'admin' }).catch(() => undefined)
   }, [])
 
   const logout = useCallback(() => {

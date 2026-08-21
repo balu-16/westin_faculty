@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
-import { BellRing, LogOut, ShieldCheck, User } from 'lucide-react'
+import { BellRing, BellOff, LogOut, ShieldCheck, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Header } from '../../components/Header'
 import { Button } from '../../components/Button'
@@ -11,6 +11,8 @@ import { ErrorState } from '../../components/ErrorState'
 import { Avatar } from '../../components/Avatar'
 import { apiFetch, uploadBytes, useApi } from '../../lib/api'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
+import { useToast } from '../../components/Toast'
+import { getOneSignalState, subscribeOneSignal, unsubscribeOneSignal } from '../../lib/onesignal'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -35,6 +37,7 @@ interface SettingsPayload {
 export function AdminSettings() {
   const { openMenu, toggleSidebar, collapsed } = useOutletContext<PortalLayoutContext>()
   const { user, logout, updateAvatar } = useAdminAuth()
+  const toast = useToast()
   const navigate = useNavigate()
   const { data: settings, error, loading, reload } = useApi<SettingsPayload>(
     'admin-portal.session',
@@ -51,6 +54,9 @@ export function AdminSettings() {
   const [reportDigest, setReportDigest] = useState(true)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  const [pushSupported, setPushSupported] = useState(true)
+  const [pushBlocked, setPushBlocked] = useState(false)
 
   useEffect(() => {
     if (!settings) return
@@ -59,6 +65,92 @@ export function AdminSettings() {
     setEventAlerts(settings.announcements)
     setReportDigest(settings.reminders)
   }, [settings])
+
+  // Sync push toggle with real OneSignal state (subscribe/unsubscribe via this toggle)
+  useEffect(() => {
+    let cancelled = false
+    const sync = async () => {
+      try {
+        const state = await getOneSignalState()
+        if (cancelled) return
+        setPushSupported(state.isSupported)
+        setPushBlocked(state.permissionNative === 'denied')
+        // If permission is denied, the browser will never deliver — force UI off
+        if (state.permissionNative === 'denied') setPushEnabled(false)
+        else if (!state.isSupported) setPushEnabled(false)
+        else if (settings) setPushEnabled(state.optedIn)
+      } catch {}
+    }
+    sync()
+    // Re-sync when tab regains focus (user may have changed permission in browser settings)
+    const onFocus = () => sync()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') sync()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [settings])
+
+  // Push toggle now directly subscribes/unsubscribes via OneSignal (user gesture) + syncs server push flag
+  const handlePushToggle = async (next: boolean) => {
+    if (pushBusy) return
+    setPushBusy(true)
+    try {
+      if (next) {
+        const state = await getOneSignalState()
+        if (!state.isSupported) {
+          toast.danger('Push not supported in this browser — try Chrome/Edge/Firefox (not incognito).')
+          setPushEnabled(false)
+          return
+        }
+        if (state.permissionNative === 'denied') {
+          setPushBlocked(true)
+          setPushEnabled(false)
+          toast.danger('Permission blocked — click the lock icon in the address bar → Reset permission → Reload.')
+          return
+        }
+        const ok = await subscribeOneSignal()
+        const after = await getOneSignalState()
+        if (ok && after.optedIn) {
+          setPushEnabled(true)
+          setPushBlocked(false)
+          // Persist server push=true so History/audit knows intent, but delivery needs optedIn
+          await apiFetch('/api/settings', {
+            method: 'PATCH',
+            sessionKey: 'admin-portal.session',
+            body: { push: true, email: emailEnabled, announcements: eventAlerts, reminders: reportDigest },
+          }).catch(() => undefined)
+          toast.success('Push notifications enabled on this device.')
+        } else {
+          const st2 = await getOneSignalState()
+          if (st2.permissionNative === 'denied') {
+            setPushBlocked(true)
+            toast.danger('Permission denied — enable in browser settings to receive push.')
+          } else {
+            toast.danger('Permission dismissed — enable again anytime in Settings.')
+          }
+          setPushEnabled(false)
+        }
+      } else {
+        await unsubscribeOneSignal()
+        setPushEnabled(false)
+        setPushBlocked(false)
+        await apiFetch('/api/settings', {
+          method: 'PATCH',
+          sessionKey: 'admin-portal.session',
+          body: { push: false, email: emailEnabled, announcements: eventAlerts, reminders: reportDigest },
+        }).catch(() => undefined)
+        toast.success('Push notifications disabled on this device.')
+      }
+    } finally {
+      setPushBusy(false)
+    }
+  }
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
@@ -184,12 +276,22 @@ export function AdminSettings() {
             Push via OneSignal (site https://westin-faculty.vercel.app). To receive admin broadcasts, enable it in{' '}
             <Link to="/admin/notifications/settings" className="font-semibold text-primary-dark hover:text-primary">Notifications → My Settings</Link>.
           </p>
+          {!pushSupported && (
+            <p className="mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <BellOff size={14} aria-hidden="true" /> Push not supported in this browser (try Chrome/Edge/Firefox, not incognito).
+            </p>
+          )}
+          {pushBlocked && (
+            <p className="mb-3 flex items-center gap-2 rounded-xl bg-danger/10 px-3 py-2 text-xs text-danger">
+              <BellOff size={14} aria-hidden="true" /> Permission blocked — click the lock icon → Site settings → Reset permission → Reload, then toggle again.
+            </p>
+          )}
           <div className="divide-y divide-line">
             <Toggle
               label="Push notifications"
-              description="Receive alerts on your device."
+              description={pushBlocked ? 'Blocked in browser — reset permission to enable.' : pushBusy ? 'Updating subscription…' : 'Receive alerts on your device. (Toggle subscribes/unsubscribes this browser)'}
               checked={pushEnabled}
-              onChange={setPushEnabled}
+              onChange={handlePushToggle}
             />
             <Toggle
               label="Email notifications"

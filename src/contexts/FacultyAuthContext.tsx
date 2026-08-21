@@ -17,7 +17,7 @@ import {
   type SessionKey,
 } from '../lib/api'
 import type { FacultyUser } from '../types'
-import { identifyAndPrompt, logoutOneSignalUser } from '../lib/onesignal'
+import { identifyOneSignalUser, logoutOneSignalUser } from '../lib/onesignal'
 
 const STORAGE_KEY: SessionKey = 'faculty-portal.session'
 
@@ -78,8 +78,9 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toFacultyUser(data.user))
-    // OneSignal: identify after OTP verify — faculty_<users.id>, prompt permission post-login
-    void identifyAndPrompt({ id: data.user.id, role: 'faculty' }).catch(() => undefined)
+    // OneSignal: identify only — do NOT auto-prompt permission here (loses user gesture and causes "Permission blocked").
+    // Permission is requested from a user gesture: the post-login banner button or the Settings toggle.
+    void identifyOneSignalUser({ id: data.user.id, role: 'faculty' }).catch(() => undefined)
   }, [])
 
   const logout = useCallback(() => {
