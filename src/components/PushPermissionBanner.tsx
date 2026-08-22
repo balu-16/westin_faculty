@@ -1,14 +1,35 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
-import { getOneSignalState, subscribeOneSignal } from '../lib/onesignal'
+import { getOneSignalExternalId, getOneSignalState, subscribeOneSignal } from '../lib/onesignal'
+import { getSession } from '../lib/api'
 import { useToast } from './Toast'
 
-const DISMISS_KEY = 'westin:pushBanner:dismissed'
+const DISMISS_KEY_BASE = 'westin:pushBanner:dismissed'
+
+/** Current portal user, whichever faculty/admin session exists on this browser. */
+function currentPortalUser(): { id: string; role: 'faculty' | 'admin' } | null {
+  for (const key of ['faculty-portal.session', 'admin-portal.session'] as const) {
+    const session = getSession(key)
+    if (session?.user && (session.user.role === 'faculty' || session.user.role === 'admin')) {
+      return { id: session.user.id, role: session.user.role }
+    }
+  }
+  return null
+}
+
+/** Dismissal is per user (external id): a dismissal by one account never silences
+ * the ask for a different account logging in on the same shared browser. */
+function dismissKeyFor(user: { id: string; role: 'faculty' | 'admin' }): string {
+  return `${DISMISS_KEY_BASE}:${getOneSignalExternalId(user)}`
+}
 
 /**
  * Soft post-login banner — shown ONLY after login when push is not yet enabled.
  * The "Enable" button is a direct user gesture, so Notification.requestPermission() is not "blocked".
- * Dismiss is remembered per browser (localStorage) for 7 days.
+ * If permission was already granted on this browser, login auto-subscribes silently
+ * (see identifyOneSignalUser) and this banner stays hidden — the browser can never
+ * re-show the native prompt once granted, so there is nothing left to ask.
+ * Dismiss is remembered per user (localStorage, keyed by external id) for 7 days.
  */
 export function PushPermissionBanner() {
   const toast = useToast()
@@ -19,9 +40,11 @@ export function PushPermissionBanner() {
     let cancelled = false
     const check = async () => {
       try {
-        // Respect dismiss (7 days)
+        const user = currentPortalUser()
+        if (!user) return
+        // Respect this user's dismiss (7 days)
         try {
-          const raw = localStorage.getItem(DISMISS_KEY)
+          const raw = localStorage.getItem(dismissKeyFor(user))
           if (raw) {
             const { at } = JSON.parse(raw) as { at: number }
             if (Date.now() - at < 7 * 24 * 60 * 60 * 1000) return
@@ -33,10 +56,6 @@ export function PushPermissionBanner() {
         if (!state.isSupported) return
         if (state.permissionNative === 'denied') return
         if (state.optedIn) return
-        // Only show if user is logged in (one of the session keys exists)
-        const hasSession =
-          !!localStorage.getItem('faculty-portal.session') || !!localStorage.getItem('admin-portal.session')
-        if (!hasSession) return
         setVisible(true)
       } catch {}
     }
@@ -56,7 +75,8 @@ export function PushPermissionBanner() {
         toast.success('Push notifications enabled — you’ll receive alerts on this device.')
         setVisible(false)
         try {
-          localStorage.removeItem(DISMISS_KEY)
+          const user = currentPortalUser()
+          if (user) localStorage.removeItem(dismissKeyFor(user))
         } catch {}
       } else {
         const state = await getOneSignalState()
@@ -74,7 +94,8 @@ export function PushPermissionBanner() {
   const handleDismiss = () => {
     setVisible(false)
     try {
-      localStorage.setItem(DISMISS_KEY, JSON.stringify({ at: Date.now() }))
+      const user = currentPortalUser()
+      if (user) localStorage.setItem(dismissKeyFor(user), JSON.stringify({ at: Date.now() }))
     } catch {}
   }
 

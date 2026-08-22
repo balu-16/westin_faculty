@@ -14,11 +14,17 @@
  *
  * Permission model:
  * - OneSignal.init() in index.html does NOT auto-prompt (prompts: [], notifyButton: false, autoResubscribe: false).
- * - Permission is requested ONLY after login, via a USER GESTURE (toggle / button click).
+ * - The native prompt is requested ONLY via a USER GESTURE (toggle / button click).
  *   Calling Notification.requestPermission() without a gesture is blocked ("Permission blocked" error).
  *   We therefore never call requestPermission on page load or from a deferred async after OTP verify
  *   that has lost the transient activation. Instead the Settings toggle and the post-login banner
  *   both trigger optIn() from a direct click handler.
+ * - Browsers grant the Notification permission ONCE per profile; it can never be re-prompted.
+ *   So on every login we instead ensure the subscription: if permission is already 'granted'
+ *   but the device is not opted in, identifyOneSignalUser() silently re-subscribes (optIn needs
+ *   no gesture when no permission prompt will be shown).
+ * - Identity operations (logout/login/optIn) are serialized so a pending logout() from the
+ *   previous session can never resolve after the next login() and unlink the new user.
  */
 
 export type OneSignalRole = 'faculty' | 'admin';
@@ -83,6 +89,16 @@ function writeLastExternalId(id: string | null): void {
     if (id === null) window.localStorage.removeItem(LAST_EXTERNAL_ID_KEY);
     else window.localStorage.setItem(LAST_EXTERNAL_ID_KEY, id);
   } catch {}
+}
+
+// Identity ops must never interleave: a logout() still in flight when the next
+// login(externalId) runs would unlink the freshly identified user (observed as
+// "logged in as admin but never subscribed"). Chain every identity mutation.
+let identityChain: Promise<unknown> = Promise.resolve();
+function enqueueIdentity<T>(fn: () => Promise<T>): Promise<T> {
+  const run = identityChain.then(fn, fn);
+  identityChain = run.catch(() => undefined);
+  return run;
 }
 
 /** Resolve the live OneSignal instance, waiting for Deferred queue if needed. */
@@ -219,38 +235,54 @@ export async function unsubscribeOneSignal(): Promise<void> {
 }
 
 /**
- * Identify the current user on this browser.
+ * Identify the current user on this browser — call on EVERY login and on session
+ * restore (page reload with an existing session), per OneSignal best practice.
  * Implements the shared-browser requirement: every login where the externalId
  * changes calls logout() before login(newExternalId), not only on explicit sign-out.
- * This keeps the OneSignal Audience subscriber count at 1, not 2, across sequential
- * logins on one device.
+ * login() transfers this device's single push subscription to the new user, so the
+ * OneSignal Audience subscriber count stays at 1 per browser, not per account.
  *
- * Does NOT request permission — caller (Settings toggle / banner) does that via subscribeOneSignal()
- * from a user gesture.
+ * Also silently re-subscribes when the browser permission is already 'granted'
+ * but the device is not opted in (e.g. after an identity switch or an optOut).
+ * It never requests permission — the native prompt only ever comes from a user
+ * gesture via subscribeOneSignal() (banner Enable button / Settings toggle).
  */
 export async function identifyOneSignalUser(user: { id: string; role: OneSignalRole }): Promise<void> {
   const nextId = getOneSignalExternalId(user);
   const lastId = readLastExternalId();
 
   try {
-    await withOneSignal(async (os) => {
-      if (lastId && lastId !== nextId) {
-        try {
-          await os.logout();
-        } catch {}
-      }
-      await os.login(nextId);
-      const tagPayload: Record<string, string> = { role: user.role };
-      if (user.role === 'faculty') tagPayload.faculty_id = user.id;
-      else tagPayload.admin_id = user.id;
-      try {
-        if (os.User?.addTags) await os.User.addTags(tagPayload);
-        else if (os.User?.addTag) {
-          for (const [k, v] of Object.entries(tagPayload)) await os.User.addTag(k, v);
+    await enqueueIdentity(() =>
+      withOneSignal(async (os) => {
+        if (lastId && lastId !== nextId) {
+          try {
+            await os.logout();
+          } catch {}
         }
-      } catch {}
-      writeLastExternalId(nextId);
-    });
+        await os.login(nextId);
+        const tagPayload: Record<string, string> = { role: user.role };
+        if (user.role === 'faculty') tagPayload.faculty_id = user.id;
+        else tagPayload.admin_id = user.id;
+        try {
+          if (os.User?.addTags) await os.User.addTags(tagPayload);
+          else if (os.User?.addTag) {
+            for (const [k, v] of Object.entries(tagPayload)) await os.User.addTag(k, v);
+          }
+        } catch {}
+        writeLastExternalId(nextId);
+
+        // Permission already granted ⇒ optIn() needs no gesture and shows no prompt;
+        // it just re-attaches this device's subscription to the newly identified user.
+        try {
+          const native =
+            os.Notifications?.permissionNative ??
+            (typeof Notification !== 'undefined' ? (Notification.permission as string | undefined) : undefined);
+          if (native === 'granted' && os.User?.PushSubscription && !os.User.PushSubscription.optedIn) {
+            await os.User.PushSubscription.optIn();
+          }
+        } catch {}
+      }),
+    );
   } catch (err) {
     console.debug('[OneSignal] identify failed', err);
   }
@@ -269,24 +301,20 @@ export async function requestOneSignalPermission(): Promise<boolean> {
   return subscribeOneSignal();
 }
 
-/** Unlink this device from the current identity. Call before clearing session on logout. */
+/** Unlink this device from the current identity. Call before clearing session on logout.
+ * Serialized against identifyOneSignalUser so the next login can never overtake it.
+ * Keeps browser permission and the subscription itself — logout() only detaches the
+ * external_id; the next login() re-attaches the subscription to the new user. */
 export async function logoutOneSignalUser(): Promise<void> {
   try {
-    await withOneSignal(async (os) => {
-      try {
-        await os.logout();
-      } catch {}
-      // Also opt-out the push subscription so this browser stops receiving
-      // pushes for the previous user until next login opts back in.
-      // We do NOT clear browser permission — user can re-optIn without re-prompt.
-      try {
-        if (os.User?.PushSubscription?.optedIn) {
-          // Do not force optOut on logout — keep subscription but unlinked from external_id.
-          // The spec says logout() unlinks device from identity; optOut is handled via Settings toggle.
-        }
-      } catch {}
-      writeLastExternalId(null);
-    });
+    await enqueueIdentity(() =>
+      withOneSignal(async (os) => {
+        try {
+          await os.logout();
+        } catch {}
+        writeLastExternalId(null);
+      }),
+    );
   } catch {}
 }
 

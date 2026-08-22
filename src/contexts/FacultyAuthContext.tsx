@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -64,6 +65,16 @@ function sessionUser(session: Session | null): FacultyUser | null {
 export function FacultyAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FacultyUser | null>(() => sessionUser(getSession(STORAGE_KEY)))
 
+  // OneSignal: identify on login AND on session restore (page reload) — OneSignal best
+  // practice is to call login(external_id) on every load once the user is known. When the
+  // browser already granted permission this also silently re-subscribes the device under
+  // the current identity; the native prompt itself only ever comes from a user gesture
+  // (post-login banner / Settings toggle), never from here.
+  useEffect(() => {
+    if (!user?.id) return
+    void identifyOneSignalUser({ id: user.id, role: 'faculty' }).catch(() => undefined)
+  }, [user?.id])
+
   const requestOtp = useCallback(async (identifier: string) => {
     await apiFetch('/api/auth/otp/request', { method: 'POST', body: { identifier, portal: 'faculty' } })
   }, [])
@@ -78,9 +89,8 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toFacultyUser(data.user))
-    // OneSignal: identify only — do NOT auto-prompt permission here (loses user gesture and causes "Permission blocked").
-    // Permission is requested from a user gesture: the post-login banner button or the Settings toggle.
-    void identifyOneSignalUser({ id: data.user.id, role: 'faculty' }).catch(() => undefined)
+    // OneSignal identification happens in the effect above (keyed by user id) —
+    // it also runs on session restore, and never prompts for permission itself.
   }, [])
 
   const logout = useCallback(() => {
