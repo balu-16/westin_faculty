@@ -24,11 +24,12 @@ function dismissKeyFor(user: { id: string; role: 'faculty' | 'admin' }): string 
 }
 
 /**
- * Soft post-login banner — shown ONLY after login when push is not yet enabled.
+ * Fallback post-login banner — shown when push is not yet enabled after the automatic
+ * login-time prompt was blocked or dismissed (the login flow itself asks for permission
+ * right after a successful login; see the auth contexts and lib/onesignal.ts).
  * The "Enable" button is a direct user gesture, so Notification.requestPermission() is not "blocked".
- * If permission was already granted on this browser, login auto-subscribes silently
- * (see identifyOneSignalUser) and this banner stays hidden — the browser can never
- * re-show the native prompt once granted, so there is nothing left to ask.
+ * If permission was already granted on this browser, login auto-subscribes silently and this
+ * banner stays hidden — the browser can never re-show the native prompt once granted.
  * Dismiss is remembered per user (localStorage, keyed by external id) for 7 days.
  */
 export function PushPermissionBanner() {

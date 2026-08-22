@@ -18,7 +18,7 @@ import {
   type SessionKey,
 } from '../lib/api'
 import type { FacultyUser } from '../types'
-import { identifyOneSignalUser, logoutOneSignalUser } from '../lib/onesignal'
+import { identifyOneSignalUser, logoutOneSignalUser, subscribeOneSignal } from '../lib/onesignal'
 
 const STORAGE_KEY: SessionKey = 'faculty-portal.session'
 
@@ -89,8 +89,16 @@ export function FacultyAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toFacultyUser(data.user))
-    // OneSignal identification happens in the effect above (keyed by user id) —
-    // it also runs on session restore, and never prompts for permission itself.
+    // Ask for notification permission immediately on successful login, while the login
+    // click's transient activation is still valid (browsers require a gesture for the
+    // native prompt). Identify first so the new subscription attaches to THIS account,
+    // then subscribeOneSignal() prompts (or silently re-subscribes if already granted).
+    // If the timing misses the gesture window, the post-login banner is the fallback.
+    // Session restore (effect above) identifies only — it never prompts.
+    void (async () => {
+      await identifyOneSignalUser({ id: data.user.id, role: 'faculty' })
+      await subscribeOneSignal()
+    })().catch(() => undefined)
   }, [])
 
   const logout = useCallback(() => {

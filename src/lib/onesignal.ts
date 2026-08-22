@@ -14,15 +14,16 @@
  *
  * Permission model:
  * - OneSignal.init() in index.html does NOT auto-prompt (prompts: [], notifyButton: false, autoResubscribe: false).
- * - The native prompt is requested ONLY via a USER GESTURE (toggle / button click).
- *   Calling Notification.requestPermission() without a gesture is blocked ("Permission blocked" error).
- *   We therefore never call requestPermission on page load or from a deferred async after OTP verify
- *   that has lost the transient activation. Instead the Settings toggle and the post-login banner
- *   both trigger optIn() from a direct click handler.
+ * - The native permission prompt is requested IMMEDIATELY AFTER A SUCCESSFUL LOGIN, from the
+ *   login click's transient-activation window (browsers require a user gesture for the prompt;
+ *   Chrome/Edge/Firefox on desktop are the supported browsers — Safari/iOS is out of scope).
+ *   The auth contexts call identifyOneSignalUser() → subscribeOneSignal() right after OTP verify.
+ * - Fallbacks when that prompt is blocked/dismissed: the post-login banner button and the
+ *   Settings toggle both call subscribeOneSignal() from a direct click handler.
+ * - We never prompt on page load or session restore (no gesture available there).
  * - Browsers grant the Notification permission ONCE per profile; it can never be re-prompted.
- *   So on every login we instead ensure the subscription: if permission is already 'granted'
- *   but the device is not opted in, identifyOneSignalUser() silently re-subscribes (optIn needs
- *   no gesture when no permission prompt will be shown).
+ *   On later logins we instead ensure the subscription: identifyOneSignalUser() silently
+ *   re-subscribes if permission is 'granted' but the device is not opted in.
  * - Identity operations (logout/login/optIn) are serialized so a pending logout() from the
  *   previous session can never resolve after the next login() and unlink the new user.
  */
@@ -196,6 +197,7 @@ export async function subscribeOneSignal(): Promise<boolean> {
     const state = await getOneSignalState();
     if (!state.isSupported) return false;
     if (state.permissionNative === 'denied') return false; // cannot prompt again until user resets in browser
+    if (state.optedIn && state.permission) return true; // already subscribed — nothing to ask
 
     // OneSignal v16: optIn() will trigger the native permission prompt if needed.
     // It must be called with transient activation (from click). Our caller (Toggle/button)
