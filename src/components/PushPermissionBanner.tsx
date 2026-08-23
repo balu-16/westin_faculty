@@ -25,13 +25,14 @@ function dismissKeyFor(user: { id: string; role: 'faculty' | 'admin' }): string 
 }
 
 /**
- * Post-login banner — the ONLY path that asks for notification permission. Shown when
- * the currently logged-in account is not yet subscribed on this browser: first-ever
- * subscribe (fires the native permission prompt), or a second account on a shared
- * browser where permission is already granted (Enable re-binds the device subscription
- * to the current account — the browser itself never re-prompts once granted). The
- * "Enable" button is a direct user gesture, so Notification.requestPermission() is not
- * "blocked". Dismiss is remembered per user (localStorage, keyed by external id) for 7 days.
+ * Post-login banner — the ONLY path that asks for notification permission. In practice
+ * it shows only when the native permission was never granted ('default'): the identify
+ * heal silently (re)subscribes an already-granted browser under the logged-in account
+ * at login, and the browser itself can never re-prompt once granted. The "Enable"
+ * button is a direct user gesture, so Notification.requestPermission() is not
+ * "blocked" (it also re-consents an account that deliberately turned notifications
+ * off in Settings). Dismiss is remembered per user (localStorage, keyed by external
+ * id) for 7 days.
  */
 export function PushPermissionBanner() {
   const toast = useToast()

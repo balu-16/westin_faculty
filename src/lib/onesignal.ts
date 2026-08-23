@@ -28,7 +28,9 @@ import { apiFetch, getSession, type SessionKey } from './api';
  *   When permission is already granted, identifyOneSignalUser() silently (re)creates this
  *   browser's single subscription via optIn() — no prompt, no gesture needed — so whoever
  *   logged in LAST is always genuinely subscribed (shared-browser second account, iOS
- *   subscription churn). The banner only ever prompts when permission is 'default'.
+ *   subscription churn), UNLESS that account deliberately turned notifications off in
+ *   Settings (per-account opt-out marker survives logins and reloads). The banner only
+ *   ever prompts when permission is 'default'.
  *   On a shared browser only the account that logged in LAST receives pushes — inherent
  *   web-push limit, not fixable.
  * - Logging OUT does not touch OneSignal: the device keeps receiving that account's pushes
@@ -111,6 +113,23 @@ function writeLastExternalId(id: string | null): void {
 // sendSubscriptionThanksOnce() uses it so the thank-you is addressed to the account that
 // actually owns the subscription, never guessed from whichever session key exists.
 let currentIdentity: { id: string; role: OneSignalRole } | null = null;
+
+// Deliberate opt-out (Settings toggle off) must survive logins and reloads — the silent
+// heal in identifyOneSignalUser() would otherwise re-subscribe the account on its next
+// visit. Keyed per external id; an explicit Enable (subscribeOneSignal) clears it.
+const OPTED_OUT_KEY_PREFIX = 'westin:onesignal:optedOut:';
+
+function optedOutFlagKey(externalId: string): string {
+  return OPTED_OUT_KEY_PREFIX + externalId;
+}
+
+function hasOptedOut(externalId: string): boolean {
+  try {
+    return !!window.localStorage.getItem(optedOutFlagKey(externalId));
+  } catch {
+    return false;
+  }
+}
 
 // The faculty portal mounts BOTH FacultyAuthProvider and AdminAuthProvider; with two saved
 // sessions both would identify on load and fight over this browser's single subscription.
@@ -246,6 +265,12 @@ let lastSubscribeGestureAt = 0;
  */
 export async function subscribeOneSignal(): Promise<boolean> {
   lastSubscribeGestureAt = Date.now();
+  // An explicit Enable re-consents: clear any deliberate opt-out for this account.
+  if (currentIdentity) {
+    try {
+      window.localStorage.removeItem(optedOutFlagKey(getOneSignalExternalId(currentIdentity)));
+    } catch {}
+  }
   try {
     const state = await getOneSignalState();
     if (!state.isSupported) return false;
@@ -282,8 +307,15 @@ export async function subscribeOneSignal(): Promise<boolean> {
   }
 }
 
-/** Unsubscribe this browser (optOut). Always succeeds locally. */
+/** Unsubscribe this browser (optOut). Always succeeds locally. Also records a deliberate
+ * opt-out for the current account so the silent heal in identifyOneSignalUser() does not
+ * re-subscribe them on the next login or page reload. */
 export async function unsubscribeOneSignal(): Promise<void> {
+  if (currentIdentity) {
+    try {
+      window.localStorage.setItem(optedOutFlagKey(getOneSignalExternalId(currentIdentity)), String(Date.now()));
+    } catch {}
+  }
   try {
     await withOneSignal(async (os) => {
       if (os.User?.PushSubscription?.optOut) {
@@ -339,12 +371,14 @@ export async function identifyOneSignalUser(user: { id: string; role: OneSignalR
         // Heal: with permission already granted, (re)create this browser's subscription
         // under the just-identified account. optIn() is silent here — no prompt is shown
         // for an already-granted permission, so no user gesture is required. This never
-        // sends the thank-you: that fires only from an explicit Enable gesture.
+        // sends the thank-you: that fires only from an explicit Enable gesture. A
+        // deliberate Settings opt-out survives — never heal an account that turned
+        // notifications off.
         try {
           const native =
             (os.Notifications?.permissionNative as string | undefined) ||
             (typeof Notification !== 'undefined' ? Notification.permission : 'default');
-          if (native === 'granted' && !os.User.PushSubscription.optedIn) {
+          if (native === 'granted' && !hasOptedOut(nextId) && !os.User.PushSubscription.optedIn) {
             await os.User.PushSubscription.optIn();
           }
         } catch {}
