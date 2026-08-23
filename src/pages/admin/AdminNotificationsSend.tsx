@@ -11,12 +11,27 @@ import { useToast } from '../../components/Toast'
 import { ApiError, apiFetch, useApi } from '../../lib/api'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
-type TargetType = 'all_faculty' | 'selected_faculty' | 'admins'
+type TargetType = 'all_faculty' | 'selected_faculty' | 'admins' | 'all_students' | 'selected_students'
 
 interface FacultyListItem {
   id: string
   name: string
   department: string
+}
+
+interface StudentListItem {
+  id: string
+  name: string
+  studentId: string
+  department: string
+  year: string
+}
+
+/** Uniform row for the recipient checklist (faculty or students). */
+interface DirectoryRow {
+  id: string
+  name: string
+  sub: string
 }
 
 export function AdminNotificationsSend() {
@@ -35,12 +50,28 @@ export function AdminNotificationsSend() {
   const { data: facultyList, error: facultyError, loading: facultyLoading, reload: reloadFaculty } =
     useApi<FacultyListItem[]>('admin-portal.session', targetType === 'selected_faculty' ? '/api/faculty/list' : null)
 
+  const { data: studentList, error: studentError, loading: studentLoading, reload: reloadStudents } =
+    useApi<StudentListItem[]>('admin-portal.session', targetType === 'selected_students' ? '/api/students/list' : null)
+
+  const listError = targetType === 'selected_faculty' ? facultyError : targetType === 'selected_students' ? studentError : undefined
+  const listLoading = targetType === 'selected_faculty' ? facultyLoading : targetType === 'selected_students' ? studentLoading : false
+  const reloadList = targetType === 'selected_faculty' ? reloadFaculty : reloadStudents
+
+  const directory = useMemo<DirectoryRow[]>(() => {
+    if (targetType === 'selected_faculty') {
+      return (facultyList ?? []).map((f) => ({ id: f.id, name: f.name, sub: f.department }))
+    }
+    if (targetType === 'selected_students') {
+      return (studentList ?? []).map((s) => ({ id: s.id, name: s.name, sub: `${s.studentId} • ${s.department} • ${s.year}` }))
+    }
+    return []
+  }, [targetType, facultyList, studentList])
+
   const filtered = useMemo(() => {
-    if (!facultyList) return []
     const q = search.trim().toLowerCase()
-    if (!q) return facultyList
-    return facultyList.filter((f) => f.name.toLowerCase().includes(q) || f.department.toLowerCase().includes(q))
-  }, [facultyList, search])
+    if (!q) return directory
+    return directory.filter((r) => r.name.toLowerCase().includes(q) || r.sub.toLowerCase().includes(q))
+  }, [directory, search])
 
   const toggleId = (id: string) => {
     setSelectedIds((prev) => {
@@ -52,14 +83,14 @@ export function AdminNotificationsSend() {
     setErrors((p) => ({ ...p, recipients: undefined }))
   }
 
-  const allFilteredSelected = filtered.length > 0 && filtered.every((f) => selectedIds.has(f.id))
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id))
   const toggleAllFiltered = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (allFilteredSelected) {
-        for (const f of filtered) next.delete(f.id)
+        for (const r of filtered) next.delete(r.id)
       } else {
-        for (const f of filtered) next.add(f.id)
+        for (const r of filtered) next.add(r.id)
       }
       return next
     })
@@ -72,7 +103,11 @@ export function AdminNotificationsSend() {
     else if (title.trim().length > 120) nextErrors.title = 'Title must be 120 characters or fewer.'
     if (!message.trim()) nextErrors.message = 'Message is required.'
     else if (message.trim().length > 500) nextErrors.message = 'Message must be 500 characters or fewer.'
-    if (targetType === 'selected_faculty' && selectedIds.size === 0) nextErrors.recipients = 'Select at least one faculty member.'
+    if (
+      (targetType === 'selected_faculty' || targetType === 'selected_students') &&
+      selectedIds.size === 0
+    )
+      nextErrors.recipients = 'Select at least one recipient.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -84,6 +119,7 @@ export function AdminNotificationsSend() {
         target_type: targetType,
       }
       if (targetType === 'selected_faculty') body.faculty_ids = [...selectedIds]
+      if (targetType === 'selected_students') body.student_ids = [...selectedIds]
       const res = (await apiFetch('/api/notifications/send', {
         method: 'POST',
         sessionKey: 'admin-portal.session',
@@ -93,7 +129,7 @@ export function AdminNotificationsSend() {
       navigate('/admin/notifications/history')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not send notification.'
-      if (err instanceof ApiError && /No admins have opted in/i.test(msg)) {
+      if (err instanceof ApiError && /No (other active )?admins/i.test(msg)) {
         setErrors((p) => ({ ...p, recipients: msg }))
         toast.danger(msg)
       } else {
@@ -166,7 +202,9 @@ export function AdminNotificationsSend() {
                 [
                   { value: 'all_faculty', label: 'All Faculty', hint: 'Every active faculty member' },
                   { value: 'selected_faculty', label: 'Selected Faculty', hint: 'Pick specific people' },
-                  { value: 'admins', label: 'Other Admins', hint: 'Opted-in admins only (excl. you)' },
+                  { value: 'admins', label: 'Other Admins', hint: 'All other admins (excl. you)' },
+                  { value: 'all_students', label: 'All Students', hint: 'Every active student' },
+                  { value: 'selected_students', label: 'Selected Students', hint: 'Pick specific students' },
                 ] as const
               ).map((opt) => (
                 <label
@@ -195,12 +233,12 @@ export function AdminNotificationsSend() {
             </div>
           </fieldset>
 
-          {targetType === 'selected_faculty' && (
+          {(targetType === 'selected_faculty' || targetType === 'selected_students') && (
             <div className="rounded-xl border border-line bg-primary-lighter/30 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
                   <Users size={16} className="text-primary" aria-hidden="true" />
-                  Choose Faculty
+                  {targetType === 'selected_faculty' ? 'Choose Faculty' : 'Choose Students'}
                   <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-white">{selectedIds.size} selected</span>
                 </h3>
                 <div className="flex items-center gap-2">
@@ -216,13 +254,13 @@ export function AdminNotificationsSend() {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name or department…"
+                  placeholder={targetType === 'selected_faculty' ? 'Search by name or department…' : 'Search by name, ID, department or year…'}
                   className="h-9 w-full rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-primary focus:outline-none"
                 />
               </div>
-              {facultyError && !facultyList ? (
-                <ErrorState message={facultyError} onRetry={reloadFaculty} compact />
-              ) : facultyLoading && !facultyList ? (
+              {listError && directory.length === 0 ? (
+                <ErrorState message={listError} onRetry={reloadList} compact />
+              ) : listLoading && directory.length === 0 ? (
                 <div className="space-y-2">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full" />
@@ -232,19 +270,19 @@ export function AdminNotificationsSend() {
                 <div className="max-h-72 overflow-y-auto rounded-xl border border-line bg-white scrollbar-thin">
                   {filtered.length === 0 ? (
                     <p className="px-4 py-8 text-center text-sm text-ink-soft">
-                      No faculty match &quot;{search}&quot;.
+                      No matches for &quot;{search}&quot;.
                     </p>
                   ) : (
                     <ul className="divide-y divide-line/60">
-                      {filtered.map((f) => {
-                        const checked = selectedIds.has(f.id)
+                      {filtered.map((r) => {
+                        const checked = selectedIds.has(r.id)
                         return (
-                          <li key={f.id}>
+                          <li key={r.id}>
                             <label className={`flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors ${checked ? 'bg-primary-lighter/70' : 'hover:bg-primary-lighter/40'}`}>
-                              <input type="checkbox" checked={checked} onChange={() => toggleId(f.id)} className="h-4 w-4 rounded accent-primary" />
+                              <input type="checkbox" checked={checked} onChange={() => toggleId(r.id)} className="h-4 w-4 rounded accent-primary" />
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-semibold text-ink">{f.name}</span>
-                                <span className="block truncate text-xs text-ink-soft">{f.department}</span>
+                                <span className="block truncate text-sm font-semibold text-ink">{r.name}</span>
+                                <span className="block truncate text-xs text-ink-soft">{r.sub}</span>
                               </span>
                               {checked && <CheckCircle2 size={18} className="shrink-0 text-primary" aria-hidden="true" />}
                             </label>
@@ -264,12 +302,27 @@ export function AdminNotificationsSend() {
             </div>
           )}
 
+          {targetType === 'all_students' && (
+            <div className="rounded-xl border border-line bg-primary-lighter/40 px-4 py-3 text-sm text-ink">
+              <p className="font-medium">All Students</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                Sends to every active student subscribed on the student portal (https://westin-student.vercel.app). Students who
+                haven&apos;t enabled notifications there yet are skipped automatically — nothing fails.
+              </p>
+              {errors.recipients && (
+                <p role="alert" className="mt-2 text-xs font-medium text-danger">
+                  {errors.recipients}
+                </p>
+              )}
+            </div>
+          )}
+
           {targetType === 'admins' && (
             <div className="rounded-xl border border-line bg-amber-50 px-4 py-3 text-sm text-ink">
               <p className="font-medium">Other Admins</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-soft">
-                Sends to every admin who enabled <em>Receive notifications sent by other admins</em> in their settings, excluding you. If no
-                other admin has opted in, you will see “No admins have opted in to receive notifications.”
+                Sends to every other active admin (each admin can opt out in their settings). Only admins subscribed on this portal
+                receive the push.
               </p>
               {errors.recipients && (
                 <p role="alert" className="mt-2 text-xs font-medium text-danger">
@@ -284,7 +337,9 @@ export function AdminNotificationsSend() {
               <Send size={16} aria-hidden="true" />
               Send Notification
             </Button>
-            <span className="text-xs text-ink-soft">Site: https://westin-faculty.vercel.app • Free tier limit 10,000 per send (cohort is smaller).</span>
+            <span className="text-xs text-ink-soft">
+              Faculty/admins receive from westin-faculty.vercel.app • students from westin-student.vercel.app
+            </span>
           </div>
         </form>
       </Card>
