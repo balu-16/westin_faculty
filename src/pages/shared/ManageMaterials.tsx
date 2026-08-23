@@ -4,9 +4,7 @@ import {
   ChevronRight,
   Download,
   FileText,
-  Filter,
   FolderOpen,
-  MoreVertical,
   Pencil,
   Presentation,
   Search,
@@ -56,10 +54,11 @@ interface RowActionsProps {
   /** Row-level delete in flight — spinner + disabled icon button. */
   deleting?: boolean
   onDownload: (_file: StudyFile) => void
+  onEdit: (_file: StudyFile) => void
   onDelete: (_file: StudyFile) => void
 }
 
-function RowActions({ file, deleting = false, onDownload, onDelete }: RowActionsProps) {
+function RowActions({ file, deleting = false, onDownload, onEdit, onDelete }: RowActionsProps) {
   return (
     <div className="flex items-center gap-2">
       <button
@@ -72,6 +71,7 @@ function RowActions({ file, deleting = false, onDownload, onDelete }: RowActions
       </button>
       <button
         type="button"
+        onClick={() => onEdit(file)}
         aria-label={`Edit ${file.name}`}
         className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft transition-colors duration-200 hover:bg-primary-light hover:text-primary-dark"
       >
@@ -85,13 +85,6 @@ function RowActions({ file, deleting = false, onDownload, onDelete }: RowActions
         className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft transition-colors duration-200 hover:bg-danger/10 hover:text-danger disabled:pointer-events-none disabled:opacity-60"
       >
         {deleting ? <Spinner size={14} className="text-danger" /> : <Trash2 size={14} aria-hidden="true" />}
-      </button>
-      <button
-        type="button"
-        aria-label="More actions"
-        className="flex h-7 w-7 items-center justify-center rounded-lg text-ink-soft transition-colors duration-200 hover:bg-primary-light hover:text-primary-dark"
-      >
-        <MoreVertical size={15} aria-hidden="true" />
       </button>
     </div>
   )
@@ -164,6 +157,16 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
   const [uploading, setUploading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ file?: string; title?: string; subject?: string }>({})
+
+  // Edit dialog — renames / re-subjects an already-uploaded file (metadata only;
+  // the stored object itself is untouched).
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingFile, setEditingFile] = useState<StudyFile | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editSubject, setEditSubject] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editErrors, setEditErrors] = useState<{ title?: string; subject?: string }>({})
 
   useEffect(() => {
     const t = window.setTimeout(() => { setSearch(query.trim()); setPage(1) }, 300)
@@ -273,6 +276,45 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
     setModalOpen(true)
   }
 
+  const openEdit = (file: StudyFile) => {
+    setEditingFile(file)
+    setEditTitle(file.name)
+    setEditSubject(file.subjectId ?? '')
+    setEditDescription(file.description ?? '')
+    setEditErrors({})
+    setEditOpen(true)
+  }
+
+  const handleEdit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editingFile) return
+    const nextErrors: typeof editErrors = {}
+    if (!editTitle.trim()) nextErrors.title = 'Title is required.'
+    if (!editSubject) nextErrors.subject = 'Select a subject.'
+    setEditErrors(nextErrors)
+    if (Object.keys(nextErrors).length > 0) return
+
+    setSavingEdit(true)
+    try {
+      await apiFetch(`/api/materials/${editingFile.id}`, {
+        method: 'PATCH',
+        sessionKey,
+        body: {
+          name: editTitle.trim(),
+          subjectId: editSubject,
+          description: editDescription.trim() || null,
+        },
+      })
+      toast.success(`"${editingFile.name}" updated.`)
+      setEditOpen(false)
+      reload()
+    } catch (err) {
+      toast.danger(err instanceof Error ? err.message : 'Could not update the file.')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
   const scrollFolders = (direction: 1 | -1) => {
     foldersRef.current?.scrollBy({ left: direction * 260, behavior: 'smooth' })
   }
@@ -302,13 +344,6 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
                 className="h-10 w-40 rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:outline-none sm:w-56"
               />
             </div>
-            <button
-              type="button"
-              aria-label="Filter materials"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:text-primary"
-            >
-              <Filter size={16} aria-hidden="true" />
-            </button>
             <Button onClick={openUpload}>
               <Upload size={16} aria-hidden="true" />
               Upload Material
@@ -447,7 +482,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
                   <td className="px-4 py-3.5 text-ink-soft">{file.size}</td>
                   <td className="px-6 py-3.5">
                     <div className="flex justify-end">
-                      <RowActions file={file} deleting={deletingId === file.id} onDownload={handleDownload} onDelete={handleDelete} />
+                      <RowActions file={file} deleting={deletingId === file.id} onDownload={handleDownload} onEdit={openEdit} onDelete={handleDelete} />
                     </div>
                   </td>
                 </tr>
@@ -474,7 +509,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
                 </div>
               </div>
               <div className="mt-3 flex justify-end">
-                <RowActions file={file} deleting={deletingId === file.id} onDownload={handleDownload} onDelete={handleDelete} />
+                <RowActions file={file} deleting={deletingId === file.id} onDownload={handleDownload} onEdit={openEdit} onDelete={handleDelete} />
               </div>
             </li>
           ))}
@@ -572,6 +607,60 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
             placeholder="Short summary of what this file covers"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+          />
+        </form>
+      </Modal>
+
+      {/* Edit dialog */}
+      <Modal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title="Edit Material"
+        subtitle="Updates the file's details — the uploaded file itself stays unchanged."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="edit-material-form" loading={savingEdit}>
+              <Pencil size={16} aria-hidden="true" />
+              Save Changes
+            </Button>
+          </>
+        }
+      >
+        <form id="edit-material-form" onSubmit={handleEdit} noValidate className="space-y-4">
+          <TextField
+            id="edit-material-title"
+            label="Title"
+            required
+            placeholder="e.g. Unit 3 — Neural Networks"
+            value={editTitle}
+            onChange={(e) => {
+              setEditTitle(e.target.value)
+              setEditErrors((prev) => ({ ...prev, title: undefined }))
+            }}
+            error={editErrors.title}
+          />
+          <SelectField
+            id="edit-material-subject"
+            label="Subject"
+            required
+            placeholder="Select subject"
+            options={(subjects ?? []).map((s) => ({ value: s.id, label: `${s.code} — ${s.name}` }))}
+            value={editSubject}
+            onChange={(e) => {
+              setEditSubject(e.target.value)
+              setEditErrors((prev) => ({ ...prev, subject: undefined }))
+            }}
+            error={editErrors.subject}
+          />
+          <TextAreaField
+            id="edit-material-description"
+            label="Description"
+            placeholder="Short summary of what this file covers"
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
           />
         </form>
       </Modal>

@@ -576,15 +576,6 @@ export function AdminTimetable() {
   const slotsPending =
     (slotsLoading && !slotsData) || (!sectionId && !slotsData && directorySections.length === 0)
 
-  const handleSave = () => {
-    if (dayConflictCount > 0) {
-      toast.danger('Resolve the conflicts before saving this schedule.')
-      return
-    }
-    reloadSlots()
-    toast.success(`Timetable for ${sectionLabelOf(sectionId)} synced with the server.`)
-  }
-
   /* ----- Import state ----- */
   const [importOpen, setImportOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -949,9 +940,6 @@ export function AdminTimetable() {
                   <>Changes save to {sectionId ? sectionLabelOf(sectionId) : 'the section'} automatically.</>
                 )}
               </p>
-              <Button onClick={handleSave} loading={busy}>
-                Save Changes
-              </Button>
             </div>
           </Card>
         </>

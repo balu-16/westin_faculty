@@ -22,7 +22,7 @@ import { Header } from '../../components/Header'
 import { Card, SectionCard } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
-import { FileField, SelectField, TextAreaField, TextField } from '../../components/FormFields'
+import { SelectField, TextAreaField, TextField } from '../../components/FormFields'
 import { Skeleton, SkeletonRows, Spinner } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
@@ -109,9 +109,10 @@ interface FormErrors {
   date?: string
   time?: string
   location?: string
+  description?: string
 }
 
-function FeaturedBanner({ event }: { event: PortalEvent }) {
+function FeaturedBanner({ event, onEdit }: { event: PortalEvent; onEdit: (_event: PortalEvent) => void }) {
   return (
     <div className="relative overflow-hidden rounded-[20px] shadow-card">
       {/* Dark concert-style backdrop */}
@@ -167,7 +168,7 @@ function FeaturedBanner({ event }: { event: PortalEvent }) {
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button>Edit Event</Button>
+          <Button onClick={() => onEdit(event)}>Edit Event</Button>
           {!looksLikeUuid(event.createdBy) && event.createdBy && (
             <span className="text-xs font-medium text-white/60">Created by {event.createdBy}</span>
           )}
@@ -410,7 +411,6 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
   const [editing, setEditing] = useState<PortalEvent | null>(null)
   const [form, setForm] = useState<EventFormState>(emptyForm)
   const [errors, setErrors] = useState<FormErrors>({})
-  const [image, setImage] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -432,7 +432,6 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
-    setImage(null)
     setErrors({})
     setModalOpen(true)
   }
@@ -448,7 +447,6 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
       location: event.location,
       description: event.description,
     })
-    setImage(null)
     setErrors({})
     setModalOpen(true)
   }
@@ -461,6 +459,7 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
     if (!form.date) nextErrors.date = 'Start date is required.'
     if (!form.time.trim()) nextErrors.time = 'Time is required.'
     if (!form.location.trim()) nextErrors.location = 'Location is required.'
+    if (!form.description.trim()) nextErrors.description = 'Description is required.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -531,7 +530,7 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
             <Skeleton className="h-64 w-full rounded-[20px]" />
           ) : featured ? (
             <section aria-label="Featured event">
-              <FeaturedBanner event={featured} />
+              <FeaturedBanner event={featured} onEdit={openEdit} />
             </section>
           ) : null}
 
@@ -713,16 +712,11 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
           <TextAreaField
             id="event-description"
             label="Description"
-            placeholder="What is this event about?"
+            required
+            placeholder="What is this event about? Students see this in the event details."
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
-          />
-          <FileField
-            label="Event Image"
-            accept="image/*"
-            hint="PNG or JPG — up to 5 MB"
-            fileName={image?.name ?? null}
-            onChange={setImage}
+            error={errors.description}
           />
         </form>
       </Modal>

@@ -176,7 +176,6 @@ export function FacultySectionDetail() {
                 <th scope="col" className="px-6 py-3.5 font-semibold">Name</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Student ID</th>
                 <th scope="col" className="px-4 py-3.5 font-semibold">Email</th>
-                <th scope="col" className="px-6 py-3.5 font-semibold">Attendance %</th>
               </tr>
             </thead>
             <tbody>
@@ -193,9 +192,6 @@ export function FacultySectionDetail() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3.5 text-ink-soft">{student.studentId}</td>
                   <td className="px-4 py-3.5 text-ink-soft">{student.email}</td>
-                  <td className="px-6 py-3.5">
-                    <span className="text-sm font-bold text-ink-soft">—</span>
-                  </td>
                 </tr>
               ))}
             </tbody>

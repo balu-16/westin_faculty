@@ -10,10 +10,15 @@ import { ErrorState } from '../../components/ErrorState'
 import { useApi } from '../../lib/api'
 import { mapReport, type ApiReport, type Paginated } from '../../lib/mappers'
 import { useSections } from '../../contexts/SectionsContext'
+import { useToast } from '../../components/Toast'
 import type { DailyReport } from '../../types'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
-const noop = () => undefined
+/** "No attachment on this report" feedback for the FileLink fallback. */
+function useMissingAttachmentToast() {
+  const toast = useToast()
+  return () => toast.danger('This report has no attachment.')
+}
 
 function FileLink({ report, onMissing }: { report: DailyReport; onMissing: () => void }) {
   return (
@@ -34,6 +39,7 @@ function FileLink({ report, onMissing }: { report: DailyReport; onMissing: () =>
 /** Memoized report rows — the page refetches as filters settle, so rows skip
  *  re-rendering whenever their own report record is unchanged. */
 const ReportTableRow = memo(function ReportTableRow({ report }: { report: DailyReport }) {
+  const onMissing = useMissingAttachmentToast()
   return (
     <tr className="border-b border-line/70 transition-colors duration-150 last:border-0 hover:bg-primary-lighter/60">
       <td className="whitespace-nowrap px-6 py-3.5 font-semibold text-ink">
@@ -49,7 +55,7 @@ const ReportTableRow = memo(function ReportTableRow({ report }: { report: DailyR
       <td className="px-4 py-3.5 text-ink-soft">{report.topic}</td>
       <td className="px-6 py-3.5">
         <div className="flex justify-end">
-          <FileLink report={report} onMissing={noop} />
+          <FileLink report={report} onMissing={onMissing} />
         </div>
       </td>
     </tr>
@@ -57,6 +63,7 @@ const ReportTableRow = memo(function ReportTableRow({ report }: { report: DailyR
 })
 
 const ReportCardRow = memo(function ReportCardRow({ report }: { report: DailyReport }) {
+  const onMissing = useMissingAttachmentToast()
   return (
     <li className="space-y-2 p-4">
       <div className="flex items-baseline justify-between gap-3">
@@ -71,7 +78,7 @@ const ReportCardRow = memo(function ReportCardRow({ report }: { report: DailyRep
       </p>
       <p className="text-xs text-ink-soft">{report.topic}</p>
       <div className="flex justify-end">
-        <FileLink report={report} onMissing={noop} />
+        <FileLink report={report} onMissing={onMissing} />
       </div>
     </li>
   )
