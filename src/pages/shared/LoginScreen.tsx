@@ -465,7 +465,9 @@ export function LoginScreen({
 
           <p className="mt-6 text-center text-sm text-ink-soft">
             Having trouble signing in?{' '}
-            <span className="font-semibold text-primary-dark">Contact the college IT desk</span>
+            <a href="mailto:balarakeshg@gmail.com" className="font-semibold text-primary-dark hover:text-primary">
+              Contact the college IT desk
+            </a>
           </p>
         </div>
       </div>

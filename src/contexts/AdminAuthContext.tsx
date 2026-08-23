@@ -18,7 +18,12 @@ import {
   type SessionKey,
 } from '../lib/api'
 import type { AdminUser } from '../types'
-import { identifyOneSignalUser, logoutOneSignalUser, subscribeOneSignal } from '../lib/onesignal'
+import {
+  identifyOneSignalUser,
+  logoutOneSignalUser,
+  readLastActiveRole,
+  writeLastActiveRole,
+} from '../lib/onesignal'
 
 const STORAGE_KEY: SessionKey = 'admin-portal.session'
 
@@ -65,12 +70,14 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(() => sessionUser(getSession(STORAGE_KEY)))
 
   // OneSignal: identify on login AND on session restore (page reload) — OneSignal best
-  // practice is to call login(external_id) on every load once the user is known. When the
-  // browser already granted permission this also silently re-subscribes the device under
-  // the current identity; the native prompt itself only ever comes from a user gesture
-  // (post-login banner / Settings toggle), never from here.
+  // practice is to call login(external_id) on every load once the user is known. Faculty
+  // and admin providers are BOTH mounted, so on restore we identify only when admin was
+  // the last role to log in on this browser — otherwise the two providers would fight over
+  // this browser's single push subscription. This never prompts and never opts in:
+  // permission is only requested post-login via the banner / Settings toggle.
   useEffect(() => {
     if (!user?.id) return
+    if (readLastActiveRole() !== 'admin') return
     void identifyOneSignalUser({ id: user.id, role: 'admin' }).catch(() => undefined)
   }, [user?.id])
 
@@ -79,12 +86,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (identifier: string, code: string) => {
-    // Fire the permission prompt from the click's own gesture window, in parallel
-    // with the verify request: browsers only allow the native prompt within a few
-    // seconds of a click, so a slow verify API would block it if we waited. The
-    // new subscription stays anonymous until identifyOneSignalUser() re-attaches
-    // it to this account right after login succeeds.
-    const subscribeAttempt = subscribeOneSignal().catch(() => false);
     const data = await apiFetch<{ accessToken: string; refreshToken: string; user: AuthUserPayload }>(
       '/api/auth/otp/verify',
       { method: 'POST', body: { identifier, code } },
@@ -92,16 +93,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     if (data.user.role !== 'admin') {
       throw new Error('This account does not have admin access.')
     }
+    // No permission prompt at login — prompting before the identity is known created
+    // anonymous subscriptions that raced the identify below. Mark the active role
+    // BEFORE setUser so the effect above identifies this account exactly once; the
+    // dashboard banner then asks (per account) to enable notifications.
+    writeLastActiveRole('admin')
     setSession(STORAGE_KEY, data)
     setUser(toAdminUser(data.user))
-    // Identify (re-attaching the just-created subscription to THIS account) and
-    // settle the parallel subscribe. If the prompt was blocked/dismissed, the
-    // post-login banner and Settings toggle remain the fallbacks.
-    // Session restore (effect above) identifies only — it never prompts.
-    void (async () => {
-      await identifyOneSignalUser({ id: data.user.id, role: 'admin' })
-      await subscribeAttempt
-    })().catch(() => undefined)
   }, [])
 
   const logout = useCallback(() => {

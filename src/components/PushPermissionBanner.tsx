@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
-import { getOneSignalExternalId, getOneSignalState, subscribeOneSignal } from '../lib/onesignal'
+import { getOneSignalExternalId, getOneSignalState, subscribeOneSignal, whenIdentitySettled } from '../lib/onesignal'
 import { canUsePushNow, isIOS } from '../lib/pwa'
 import { getSession } from '../lib/api'
 import { useToast } from './Toast'
@@ -25,13 +25,13 @@ function dismissKeyFor(user: { id: string; role: 'faculty' | 'admin' }): string 
 }
 
 /**
- * Fallback post-login banner — shown when push is not yet enabled after the automatic
- * login-time prompt was blocked or dismissed (the login flow itself asks for permission
- * right after a successful login; see the auth contexts and lib/onesignal.ts).
- * The "Enable" button is a direct user gesture, so Notification.requestPermission() is not "blocked".
- * If permission was already granted on this browser, login auto-subscribes silently and this
- * banner stays hidden — the browser can never re-show the native prompt once granted.
- * Dismiss is remembered per user (localStorage, keyed by external id) for 7 days.
+ * Post-login banner — the ONLY path that asks for notification permission. Shown when
+ * the currently logged-in account is not yet subscribed on this browser: first-ever
+ * subscribe (fires the native permission prompt), or a second account on a shared
+ * browser where permission is already granted (Enable re-binds the device subscription
+ * to the current account — the browser itself never re-prompts once granted). The
+ * "Enable" button is a direct user gesture, so Notification.requestPermission() is not
+ * "blocked". Dismiss is remembered per user (localStorage, keyed by external id) for 7 days.
  */
 export function PushPermissionBanner() {
   const toast = useToast()
@@ -54,9 +54,16 @@ export function PushPermissionBanner() {
             if (Date.now() - at < 7 * 24 * 60 * 60 * 1000) return
           }
         } catch {}
+        // Wait for identifyOneSignalUser() (incl. its silent subscription heal) to settle
+        // before reading state — otherwise a shared-browser account switch can look
+        // briefly "not subscribed" and flash this banner for no reason.
+        await whenIdentitySettled()
         const state = await getOneSignalState()
         if (cancelled) return
-        // Show only if supported, not denied, and not yet opted-in.
+        // Show only if supported, not denied, and not yet opted-in. When permission is
+        // already granted the identify heal re-binds silently, so this banner only ever
+        // prompts when the native permission was never granted ('default') — the browser
+        // itself can never re-prompt once granted.
         // On iOS standalone, OneSignal's isPushSupported() can lag behind the
         // platform — trust the platform gate there (canUsePushNow already ran).
         if (!state.isSupported && !isIOS()) return
