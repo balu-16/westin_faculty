@@ -8,6 +8,7 @@ import {
   History,
   Layers,
   LayoutDashboard,
+  LayoutList,
   Send,
   Settings,
   SlidersHorizontal,
@@ -31,6 +32,7 @@ export const adminNavItems = [
     icon: Bell,
     children: [
       { label: 'Send Notification', to: '/admin/notifications/send', icon: Send },
+      { label: 'Notification Templates', to: '/admin/notifications/templates', icon: LayoutList },
       { label: 'Notification History', to: '/admin/notifications/history', icon: History },
       { label: 'My Notification Settings', to: '/admin/notifications/settings', icon: SlidersHorizontal },
     ],

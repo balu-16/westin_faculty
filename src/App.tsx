@@ -34,6 +34,7 @@ const AdminMaterials = lazy(() => import('./pages/admin/AdminMaterials').then((m
 const AdminReports = lazy(() => import('./pages/admin/AdminReports').then((m) => ({ default: m.AdminReports })))
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings').then((m) => ({ default: m.AdminSettings })))
 const AdminNotificationsSend = lazy(() => import('./pages/admin/AdminNotificationsSend').then((m) => ({ default: m.AdminNotificationsSend })))
+const AdminNotificationsTemplates = lazy(() => import('./pages/admin/AdminNotificationsTemplates').then((m) => ({ default: m.AdminNotificationsTemplates })))
 const AdminNotificationsHistory = lazy(() => import('./pages/admin/AdminNotificationsHistory').then((m) => ({ default: m.AdminNotificationsHistory })))
 const AdminNotificationsSettings = lazy(() => import('./pages/admin/AdminNotificationsSettings').then((m) => ({ default: m.AdminNotificationsSettings })))
 
@@ -109,6 +110,7 @@ export default function App() {
                 <Route path="materials" element={<Suspense fallback={<PageFallback />}><AdminMaterials /></Suspense>} />
                 <Route path="reports" element={<Suspense fallback={<PageFallback />}><AdminReports /></Suspense>} />
                 <Route path="notifications/send" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSend /></Suspense>} />
+                <Route path="notifications/templates" element={<Suspense fallback={<PageFallback />}><AdminNotificationsTemplates /></Suspense>} />
                 <Route path="notifications/history" element={<Suspense fallback={<PageFallback />}><AdminNotificationsHistory /></Suspense>} />
                 <Route path="notifications/settings" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSettings /></Suspense>} />
                 {/* Back-compat: /admin/notifications → send */}

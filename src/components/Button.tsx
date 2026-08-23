@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react'
 import { cx } from '../utils'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'white' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'white' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
 }
@@ -22,6 +22,8 @@ const variants = {
   white:
     'bg-white text-primary-dark shadow-[0_6px_16px_rgba(20,33,61,0.12)] hover:bg-primary-lighter',
   ghost: 'text-ink-soft hover:bg-primary-light hover:text-primary-dark',
+  danger:
+    'bg-danger text-white shadow-[0_6px_16px_rgba(239,68,68,0.30)] hover:bg-red-600 hover:shadow-[0_8px_20px_rgba(220,38,38,0.35)]',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

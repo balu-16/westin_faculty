@@ -12,11 +12,12 @@ import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 interface HistoryRow {
   id: string
-  senderAdminId: string
+  senderAdminId: string | null
   senderName: string
   messageTitle: string
   messageBody: string
-  targetType: 'all_faculty' | 'selected_faculty' | 'admins'
+  targetType: 'all_faculty' | 'selected_faculty' | 'admins' | 'all_students' | 'selected_students' | 'system'
+  kind: string | null
   createdAt: string
   onesignalNotificationId: string | null
   recipientCount: number
@@ -31,20 +32,32 @@ interface HistoryResponse {
 
 interface RecipientRow {
   id: string
-  recipientType: 'faculty' | 'admin'
+  recipientType: 'faculty' | 'admin' | 'student'
   recipientId: string
   name: string
   email: string | null
   department: string | null
   facultyId: string | null
   adminId: string | null
+  studentId: string | null
   delivered: boolean | null
 }
 
-function targetLabel(t: HistoryRow['targetType']): string {
+const KIND_LABELS: Record<string, string> = {
+  announcement: 'Announcement',
+  event: 'Event',
+  attendance_absent: 'Attendance',
+  report_reminder: 'Report Reminder',
+}
+
+function targetLabel(row: Pick<HistoryRow, 'targetType' | 'kind'>): string {
+  const { targetType: t, kind } = row
   if (t === 'all_faculty') return 'All Faculty'
   if (t === 'selected_faculty') return 'Selected Faculty'
-  return 'Other Admins'
+  if (t === 'admins') return 'Other Admins'
+  if (t === 'all_students') return 'All Students'
+  if (t === 'selected_students') return 'Selected Students'
+  return kind && KIND_LABELS[kind] ? `Automatic — ${KIND_LABELS[kind]}` : 'Automatic'
 }
 
 function formatWhen(iso: string): string {
@@ -204,7 +217,7 @@ export function AdminNotificationsHistory() {
                             <p className="truncate text-xs text-ink-soft">{row.messageBody}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <span className="rounded-full bg-primary-light px-2.5 py-1 text-xs font-semibold text-primary-dark">{targetLabel(row.targetType)}</span>
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.targetType === 'system' ? 'bg-success/15 text-success' : 'bg-primary-light text-primary-dark'}`}>{targetLabel(row)}</span>
                           </td>
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center gap-1.5 text-ink">
@@ -246,7 +259,7 @@ export function AdminNotificationsHistory() {
                                           <span className="min-w-0">
                                             <span className="block truncate text-sm font-medium text-ink">{r.name}</span>
                                             <span className="block truncate text-xs text-ink-soft">
-                                              {r.recipientType === 'faculty' ? r.facultyId ?? r.email : r.adminId ?? r.email} • {r.department ?? '—'}
+                                              {r.recipientType === 'faculty' ? r.facultyId ?? r.email : r.recipientType === 'student' ? r.studentId ?? r.email : r.adminId ?? r.email} • {r.department ?? '—'}
                                             </span>
                                           </span>
                                           <StatusBadge status={r.recipientType === 'faculty' ? 'active' : 'active'} />

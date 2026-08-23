@@ -55,23 +55,23 @@ function SidebarContent({
       )}
       {/* College logo + portal title */}
       <div className={cx('pt-2 lg:pt-4', collapsed ? 'px-2' : 'px-4')}>
-        <div className="rounded-2xl bg-white p-2.5 shadow-[0_6px_18px_rgba(20,33,61,0.08)]">
+        <div className="mx-auto w-fit max-w-full rounded-xl bg-white p-1.5 shadow-[0_6px_18px_rgba(20,33,61,0.08)]">
           <img
             src={westinLogo}
             width={575}
             height={294}
             decoding="async"
             alt="Westin College — College Of Hotel Management, College Of Business Management, Junior College"
-            className="mx-auto block h-auto w-full"
+            className="mx-auto block h-auto max-h-12 w-auto max-w-full"
           />
         </div>
         {!collapsed && (
           <>
-            <p className="mt-3 text-center text-[17px] font-bold text-white">{portalTitle}</p>
-            <div className="mx-2 mt-3.5 h-px bg-white/25" role="presentation" />
+            <p className="mt-2 text-center text-[15px] font-bold text-white">{portalTitle}</p>
+            <div className="mx-2 mt-2.5 h-px bg-white/25" role="presentation" />
           </>
         )}
-        {collapsed && <div className="mx-2 mt-3 h-px bg-white/25" role="presentation" />}
+        {collapsed && <div className="mx-2 mt-2.5 h-px bg-white/25" role="presentation" />}
       </div>
 
       {/* Navigation — modular: supports optional collapsible children (e.g., Notifications → Send/History/Settings) */}

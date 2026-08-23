@@ -4,7 +4,7 @@ import { Bell, CheckCircle2, Search, Send, Users } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
-import { TextAreaField, TextField } from '../../components/FormFields'
+import { SelectField, TextAreaField, TextField } from '../../components/FormFields'
 import { Skeleton } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
@@ -27,6 +27,14 @@ interface StudentListItem {
   year: string
 }
 
+interface TemplateItem {
+  id: string
+  name: string
+  title: string
+  message: string
+  targetType: TargetType | null
+}
+
 /** Uniform row for the recipient checklist (faculty or students). */
 interface DirectoryRow {
   id: string
@@ -46,6 +54,19 @@ export function AdminNotificationsSend() {
   const [search, setSearch] = useState('')
   const [sending, setSending] = useState(false)
   const [errors, setErrors] = useState<{ title?: string; message?: string; recipients?: string }>({})
+
+  const { data: templates } = useApi<TemplateItem[]>('admin-portal.session', '/api/notifications/templates')
+  const [templateId, setTemplateId] = useState('')
+
+  const applyTemplate = (id: string) => {
+    setTemplateId(id)
+    const tpl = templates?.find((t) => t.id === id)
+    if (!tpl) return
+    setTitle(tpl.title)
+    setMessage(tpl.message)
+    if (tpl.targetType) setTargetType(tpl.targetType)
+    setErrors({})
+  }
 
   const { data: facultyList, error: facultyError, loading: facultyLoading, reload: reloadFaculty } =
     useApi<FacultyListItem[]>('admin-portal.session', targetType === 'selected_faculty' ? '/api/faculty/list' : null)
@@ -164,6 +185,22 @@ export function AdminNotificationsSend() {
         </div>
 
         <form onSubmit={handleSend} noValidate className="space-y-5">
+          <div>
+            <SelectField
+              id="notif-template"
+              label="Load template"
+              options={[
+                { value: '', label: 'Start from scratch (no template)' },
+                ...(templates ?? []).map((t) => ({ value: t.id, label: t.name })),
+              ]}
+              value={templateId}
+              onChange={(e) => applyTemplate(e.target.value)}
+            />
+            <p className="mt-1.5 text-xs text-ink-soft">
+              Fills the fields below — you can still edit before sending. Manage templates on the Notification
+              Templates page.
+            </p>
+          </div>
           <TextField
             id="notif-title"
             label="Title"
