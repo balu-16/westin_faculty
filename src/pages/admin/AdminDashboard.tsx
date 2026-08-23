@@ -24,6 +24,7 @@ import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import type { ActivityItem, QuickLinkItem } from '../../types'
 import { timeAgo } from '../../utils'
 import { PushPermissionBanner } from '../../components/PushPermissionBanner'
+import { InstallPwaBanner } from '../../components/InstallPwaBanner'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 const adminQuickLinks: QuickLinkItem[] = [
@@ -88,6 +89,7 @@ export function AdminDashboard() {
         firstName={user?.firstName}
       />
       <PushPermissionBanner />
+      <InstallPwaBanner />
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />

@@ -7,6 +7,7 @@ import {
   Megaphone,
 } from 'lucide-react'
 import { PushPermissionBanner } from '../../components/PushPermissionBanner'
+import { InstallPwaBanner } from '../../components/InstallPwaBanner'
 import { Header } from '../../components/Header'
 import { StatCard } from '../../components/StatCard'
 import { TimetableCard } from '../../components/TimetableCard'
@@ -70,6 +71,7 @@ export function FacultyDashboard() {
         firstName={user?.firstName}
       />
       <PushPermissionBanner />
+      <InstallPwaBanner />
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />

@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Mail } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { FallingIcons, HotelScene } from '../../components/HotelScene'
+import { InstallPwaBanner } from '../../components/InstallPwaBanner'
 import westinLogoAvif from '../../assets/images/westin-logo.avif'
 import westinLogoPng from '../../assets/images/westin-logo.png'
 import { ApiError } from '../../lib/api'
@@ -456,6 +457,10 @@ export function LoginScreen({
                 </form>
               )}
             </div>
+          </div>
+
+          <div className="mt-5">
+            <InstallPwaBanner />
           </div>
 
           <p className="mt-6 text-center text-sm text-ink-soft">

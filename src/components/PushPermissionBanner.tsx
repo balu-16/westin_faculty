@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
 import { getOneSignalExternalId, getOneSignalState, subscribeOneSignal } from '../lib/onesignal'
+import { canUsePushNow, isIOS } from '../lib/pwa'
 import { getSession } from '../lib/api'
 import { useToast } from './Toast'
 
@@ -41,6 +42,8 @@ export function PushPermissionBanner() {
     let cancelled = false
     const check = async () => {
       try {
+        // iPhone browser tabs can never subscribe — the install banner handles that case.
+        if (!canUsePushNow()) return
         const user = currentPortalUser()
         if (!user) return
         // Respect this user's dismiss (7 days)
@@ -53,8 +56,10 @@ export function PushPermissionBanner() {
         } catch {}
         const state = await getOneSignalState()
         if (cancelled) return
-        // Show only if supported, not denied, and not yet opted-in
-        if (!state.isSupported) return
+        // Show only if supported, not denied, and not yet opted-in.
+        // On iOS standalone, OneSignal's isPushSupported() can lag behind the
+        // platform — trust the platform gate there (canUsePushNow already ran).
+        if (!state.isSupported && !isIOS()) return
         if (state.permissionNative === 'denied') return
         if (state.optedIn) return
         setVisible(true)
@@ -82,7 +87,11 @@ export function PushPermissionBanner() {
       } else {
         const state = await getOneSignalState()
         if (state.permissionNative === 'denied') {
-          toast.danger('Permission blocked — click the lock icon in the address bar → Reset permission → Reload.')
+          if (isIOS()) {
+            toast.danger('Notifications are off for Westin — allow them in iPhone Settings → Notifications → Westin, or delete and re-add the Home Screen app.')
+          } else {
+            toast.danger('Permission blocked — click the lock icon in the address bar → Reset permission → Reload.')
+          }
         } else {
           toast.danger('Permission dismissed — you can enable anytime in Settings.')
         }

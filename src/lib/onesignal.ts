@@ -4,8 +4,10 @@
  * Site: https://westin-faculty.vercel.app (shared faculty+admin deployment).
  * Student portal is out-of-scope; never call these helpers from student code.
  *
- * iOS/Safari: out of scope for this rollout. Supported: Chrome/Edge/Firefox on desktop.
- * No iOS-only faculty/admin cohort — Safari/PWA push is deferred.
+ * iOS: supported ONLY inside the Home Screen installed web app (iOS 16.4+,
+ * installed via Share → Add to Home Screen from Safari/Chrome/Edge) — never
+ * in a browser tab. lib/pwa.ts gates the push UI; InstallPwaBanner guides
+ * iPhone users through the install. Desktop and Android work in the tab.
  *
  * External IDs: faculty_<users.id> / admin_<users.id> via getOneSignalExternalId().
  * This helper is the single source of truth — inline construction elsewhere is forbidden.
@@ -16,7 +18,7 @@
  * - OneSignal.init() in index.html does NOT auto-prompt (prompts: [], notifyButton: false, autoResubscribe: false).
  * - The native permission prompt is requested IMMEDIATELY AFTER A SUCCESSFUL LOGIN, from the
  *   login click's transient-activation window (browsers require a user gesture for the prompt;
- *   Chrome/Edge/Firefox on desktop are the supported browsers — Safari/iOS is out of scope).
+ *   supported: Chrome/Edge/Firefox on desktop and Android, iOS 16.4+ in the installed web app).
  *   The auth contexts call identifyOneSignalUser() → subscribeOneSignal() right after OTP verify.
  * - Fallbacks when that prompt is blocked/dismissed: the post-login banner button and the
  *   Settings toggle both call subscribeOneSignal() from a direct click handler.

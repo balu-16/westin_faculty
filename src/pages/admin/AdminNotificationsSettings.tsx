@@ -91,8 +91,8 @@ export function AdminNotificationsSettings() {
             <div className="mt-3 flex items-center gap-3 rounded-xl bg-amber-50 px-4 py-3 text-xs leading-relaxed text-ink-soft">
               <Info size={16} className="shrink-0 text-amber-600" aria-hidden="true" />
               <span>
-                This toggle does not affect faculty notifications. Supported browsers: Chrome/Edge/Firefox on desktop. iOS/Safari push is
-                deferred for this rollout.
+                This toggle does not affect faculty notifications. Supported: Chrome/Edge/Firefox on desktop, Android, and
+                iPhone (iOS 16.4+) once Westin is added to the Home Screen.
               </span>
             </div>
 
