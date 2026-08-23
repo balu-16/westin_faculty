@@ -1,3 +1,5 @@
+import { apiFetch, getSession, type SessionKey } from './api';
+
 /**
  * OneSignal Web Push — modular façade for faculty_admin_portal.
  *
@@ -16,10 +18,13 @@
  *
  * Permission model:
  * - OneSignal.init() in index.html does NOT auto-prompt (prompts: [], notifyButton: false, autoResubscribe: false).
- * - The native permission prompt is requested IMMEDIATELY AFTER A SUCCESSFUL LOGIN, from the
- *   login click's transient-activation window (browsers require a user gesture for the prompt;
- *   supported: Chrome/Edge/Firefox on desktop and Android, iOS 16.4+ in the installed web app).
- *   The auth contexts call identifyOneSignalUser() → subscribeOneSignal() right after OTP verify.
+ * - The native permission prompt is fired from the LOGIN CLICK ITSELF, in parallel with the
+ *   OTP verify request (browsers only allow the prompt within a few seconds of a gesture, so
+ *   waiting for a slow verify API could block it; supported: Chrome/Edge/Firefox on desktop and
+ *   Android, iOS 16.4+ in the installed web app). The auth contexts then run
+ *   identifyOneSignalUser() after verify succeeds, re-attaching the fresh subscription.
+ * - First successful subscribe (usually that login prompt) sends ONE thank-you push per browser
+ *   via sendSubscriptionThanksOnce() — see the first-subscription section at the bottom.
  * - Fallbacks when that prompt is blocked/dismissed: the post-login banner button and the
  *   Settings toggle both call subscribeOneSignal() from a direct click handler.
  * - We never prompt on page load or session restore (no gesture available there).
@@ -199,7 +204,12 @@ export async function subscribeOneSignal(): Promise<boolean> {
     const state = await getOneSignalState();
     if (!state.isSupported) return false;
     if (state.permissionNative === 'denied') return false; // cannot prompt again until user resets in browser
-    if (state.optedIn && state.permission) return true; // already subscribed — nothing to ask
+    if (state.optedIn && state.permission) {
+      // Already subscribed (e.g. permission granted on an earlier visit) — still say
+      // thanks once: browsers that subscribed before this feature existed never got it.
+      void sendSubscriptionThanksOnce();
+      return true; // nothing to ask
+    }
 
     // OneSignal v16: optIn() will trigger the native permission prompt if needed.
     // It must be called with transient activation (from click). Our caller (Toggle/button)
@@ -217,6 +227,7 @@ export async function subscribeOneSignal(): Promise<boolean> {
     });
 
     const after = await getOneSignalState();
+    if (after.optedIn && after.permission) void sendSubscriptionThanksOnce();
     return after.optedIn && after.permission;
   } catch (err) {
     // Permission blocked or dismissed — not fatal. Caller shows toast.
@@ -252,6 +263,7 @@ export async function unsubscribeOneSignal(): Promise<void> {
  * gesture via subscribeOneSignal() (banner Enable button / Settings toggle).
  */
 export async function identifyOneSignalUser(user: { id: string; role: OneSignalRole }): Promise<void> {
+  ensureFirstSubscriptionWatcher();
   const nextId = getOneSignalExternalId(user);
   const lastId = readLastExternalId();
 
@@ -284,6 +296,15 @@ export async function identifyOneSignalUser(user: { id: string; role: OneSignalR
           if (native === 'granted' && os.User?.PushSubscription && !os.User.PushSubscription.optedIn) {
             await os.User.PushSubscription.optIn();
           }
+        } catch {}
+
+        // Thank the user once when this browser is (or just became) subscribed. This
+        // catches the login-time permission grant — with the parallel subscribe the
+        // subscription can land before the session is stored, and this retry fires
+        // right after login()/setSession complete — and heals browsers that
+        // subscribed before the thank-you feature existed.
+        try {
+          if (os.User?.PushSubscription?.optedIn) void sendSubscriptionThanksOnce();
         } catch {}
       }),
     );
@@ -329,4 +350,59 @@ export function isOneSignalSupported(): boolean {
   } catch {
     return false;
   }
+}
+
+// ---------- first-subscription thank-you ----------
+
+// Exactly ONE thank-you push per browser (localStorage flag). It is sent the
+// moment this browser is confirmed subscribed — permission granted at login
+// (the common path), the banner / first Settings enable, or the subscription
+// change event — whichever lands first. Settings off→on toggles never re-send
+// (the flag survives them). The backend sends the push (POST
+// /api/notifications/thanks); it is not recorded in the admin History.
+const THANKED_KEY = 'westin:onesignal:thanked';
+
+export async function sendSubscriptionThanksOnce(): Promise<void> {
+  try {
+    if (localStorage.getItem(THANKED_KEY)) return;
+  } catch {
+    return;
+  }
+  // The login flow subscribes in parallel with the verify request, so the
+  // subscription can exist before the session is stored. Skip without setting
+  // the flag — identifyOneSignalUser() retries right after the session lands.
+  const key: SessionKey = localStorage.getItem('admin-portal.session')
+    ? 'admin-portal.session'
+    : 'faculty-portal.session';
+  if (!getSession(key)) return;
+  try {
+    localStorage.setItem(THANKED_KEY, String(Date.now()));
+  } catch {
+    return;
+  }
+  try {
+    await apiFetch('/api/notifications/thanks', { method: 'POST', sessionKey: key });
+  } catch {
+    try {
+      localStorage.removeItem(THANKED_KEY); // allow a later retry
+    } catch {}
+  }
+}
+
+let firstSubscriptionWatched = false;
+export function ensureFirstSubscriptionWatcher(): void {
+  if (firstSubscriptionWatched) return;
+  firstSubscriptionWatched = true;
+  void withOneSignal((os) => {
+    os.User.PushSubscription.addEventListener?.('change', (e: unknown) => {
+      const ev = e as {
+        previous?: { id?: string | null; token?: string | null };
+        current?: { id?: string | null; token?: string | null };
+      };
+      const wasNone = !ev.previous?.id && !ev.previous?.token;
+      const hasNow = !!ev.current?.id && !!ev.current?.token;
+      if (!wasNone || !hasNow) return;
+      void sendSubscriptionThanksOnce();
+    });
+  }).catch(() => undefined);
 }

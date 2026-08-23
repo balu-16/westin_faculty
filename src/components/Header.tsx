@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bell, CalendarDays, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { CalendarDays, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
 import { cx, getTodayDateLabel, todayDateLabel } from '../utils'
 import type { PortalLayoutContext } from '../layouts/PortalShell'
@@ -79,14 +79,6 @@ export function Header({
 
       {actions ?? (
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            type="button"
-            aria-label="Notifications (1 unread)"
-            className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-white text-ink-soft transition-colors duration-200 hover:border-primary/40 hover:text-primary sm:h-10 sm:w-10"
-          >
-            <Bell size={16} className="sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-white sm:right-2.5 sm:top-2.5" />
-          </button>
           <div className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-white px-3 text-xs font-medium text-ink-soft sm:h-10 sm:gap-2 sm:px-4 sm:text-sm">
             <CalendarDays size={14} className="text-primary sm:h-4 sm:w-4" aria-hidden="true" />
             <span className="hidden sm:inline">{(() => { try { return getTodayDateLabel() } catch { return todayDateLabel } })()}</span>

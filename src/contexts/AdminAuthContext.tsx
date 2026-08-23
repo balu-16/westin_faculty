@@ -79,6 +79,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (identifier: string, code: string) => {
+    // Fire the permission prompt from the click's own gesture window, in parallel
+    // with the verify request: browsers only allow the native prompt within a few
+    // seconds of a click, so a slow verify API would block it if we waited. The
+    // new subscription stays anonymous until identifyOneSignalUser() re-attaches
+    // it to this account right after login succeeds.
+    const subscribeAttempt = subscribeOneSignal().catch(() => false);
     const data = await apiFetch<{ accessToken: string; refreshToken: string; user: AuthUserPayload }>(
       '/api/auth/otp/verify',
       { method: 'POST', body: { identifier, code } },
@@ -88,15 +94,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
     setSession(STORAGE_KEY, data)
     setUser(toAdminUser(data.user))
-    // Ask for notification permission immediately on successful login, while the login
-    // click's transient activation is still valid (browsers require a gesture for the
-    // native prompt). Identify first so the new subscription attaches to THIS account,
-    // then subscribeOneSignal() prompts (or silently re-subscribes if already granted).
-    // If the timing misses the gesture window, the post-login banner is the fallback.
+    // Identify (re-attaching the just-created subscription to THIS account) and
+    // settle the parallel subscribe. If the prompt was blocked/dismissed, the
+    // post-login banner and Settings toggle remain the fallbacks.
     // Session restore (effect above) identifies only — it never prompts.
     void (async () => {
       await identifyOneSignalUser({ id: data.user.id, role: 'admin' })
-      await subscribeOneSignal()
+      await subscribeAttempt
     })().catch(() => undefined)
   }, [])
 
