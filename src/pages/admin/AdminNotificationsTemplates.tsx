@@ -6,7 +6,7 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { SelectField, TextAreaField, TextField } from '../../components/FormFields'
 import { Modal } from '../../components/Modal'
-import { Skeleton } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, useApi } from '../../lib/api'
@@ -172,11 +172,7 @@ export function AdminNotificationsTemplates() {
         {error && (data ?? []).length === 0 ? (
           <ErrorState message={error} onRetry={reload} />
         ) : loading && (data ?? []).length === 0 ? (
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
+          <PageLoader label="Fetching templates" />
         ) : (data ?? []).length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-ink-soft">
             No templates yet. Create one for the messages you send frequently.

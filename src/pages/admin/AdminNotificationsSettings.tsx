@@ -5,7 +5,7 @@ import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Toggle } from '../../components/Toggle'
 import { Button } from '../../components/Button'
-import { Skeleton } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, useApi } from '../../lib/api'
@@ -73,10 +73,7 @@ export function AdminNotificationsSettings() {
         {error && !data ? (
           <ErrorState message={error} onRetry={reload} compact />
         ) : loading && !data ? (
-          <div className="space-y-3">
-            <Skeleton className="h-14 w-full" />
-            <Skeleton className="h-9 w-32" />
-          </div>
+          <PageLoader label="Loading settings" />
         ) : (
           <>
             <div className="divide-y divide-line rounded-xl border border-line bg-white">

@@ -9,7 +9,7 @@ import { StatusBadge } from '../../components/StatusBadge'
 import { SubTabs } from '../../components/SubTabs'
 import { Modal } from '../../components/Modal'
 import { SelectField, TextField } from '../../components/FormFields'
-import { SkeletonRows } from '../../components/Loading'
+import { PageLoader, SkeletonRows } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { ApiError, apiFetch, useApi } from '../../lib/api'
@@ -382,7 +382,7 @@ export function AdminTeachers() {
               <ErrorState message={error} onRetry={reload} compact />
             </div>
           ) : loading && !teachersData ? (
-            <SkeletonRows rows={6} />
+            <PageLoader label="Fetching teachers" />
           ) : (
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full min-w-[920px] text-left text-sm">

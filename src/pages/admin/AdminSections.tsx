@@ -6,7 +6,7 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { SelectField, TextField } from '../../components/FormFields'
-import { SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { useApi } from '../../lib/api'
@@ -192,7 +192,7 @@ export function AdminSections() {
             <ErrorState message={error} onRetry={() => void reloadSections()} />
           </div>
         ) : initialLoading ? (
-          <SkeletonRows rows={6} />
+          <PageLoader label="Fetching sections" />
         ) : (
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full min-w-[820px] text-left text-sm">

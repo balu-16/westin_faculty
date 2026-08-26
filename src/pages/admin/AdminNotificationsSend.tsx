@@ -5,7 +5,7 @@ import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { SelectField, TextAreaField, TextField } from '../../components/FormFields'
-import { Skeleton } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { ApiError, apiFetch, useApi } from '../../lib/api'
@@ -298,11 +298,7 @@ export function AdminNotificationsSend() {
               {listError && directory.length === 0 ? (
                 <ErrorState message={listError} onRetry={reloadList} compact />
               ) : listLoading && directory.length === 0 ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
+                <PageLoader label="Fetching recipients" size={96} className="min-h-[220px] py-4" />
               ) : (
                 <div className="max-h-72 overflow-y-auto rounded-xl border border-line bg-white scrollbar-thin">
                   {filtered.length === 0 ? (

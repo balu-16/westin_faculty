@@ -19,7 +19,7 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { FileField, SelectField, TextAreaField, TextField } from '../../components/FormFields'
-import { SkeletonCards, SkeletonRows, Spinner } from '../../components/Loading'
+import { PageLoader, SkeletonCards, SkeletonRows, Spinner } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, uploadBytes, useApi, type SessionKey } from '../../lib/api'
@@ -135,10 +135,13 @@ interface ManageMaterialsProps {
   headerSubtitle: string
   /** Which portal session's tokens are attached to the API calls */
   sessionKey: SessionKey
+  /** When set, initial loading shows the Westin Walker with this label instead
+   *  of skeletons (opt-in — portals adopt the walker one at a time). */
+  loadingLabel?: string
 }
 
 /** Study materials manager shared by the faculty and admin portals. */
-export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsProps) {
+export function ManageMaterials({ headerSubtitle, sessionKey, loadingLabel }: ManageMaterialsProps) {
   const { openMenu } = useOutletContext<PortalLayoutContext>()
   const toast = useToast()
 
@@ -354,7 +357,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
 
       {/* Statistics */}
       {initialLoading ? (
-        <SkeletonCards count={4} />
+        loadingLabel ? <PageLoader label={loadingLabel} /> : <SkeletonCards count={4} />
       ) : error && !data ? null : (
       <section aria-label="Material statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={FolderOpen} title="Total Folders" value={String(stats?.subjects ?? folders.length)} footnote="Organized by Subject" />
@@ -446,7 +449,7 @@ export function ManageMaterials({ headerSubtitle, sessionKey }: ManageMaterialsP
             <ErrorState message={error} onRetry={reload} compact />
           </div>
         ) : initialLoading ? (
-          <SkeletonRows rows={5} />
+          loadingLabel ? null : <SkeletonRows rows={5} />
         ) : (
         <>
         <div className="hidden overflow-x-auto md:block scrollbar-thin">

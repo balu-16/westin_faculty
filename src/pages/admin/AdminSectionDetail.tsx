@@ -8,7 +8,7 @@ import { StatCard } from '../../components/StatCard'
 import { Avatar } from '../../components/Avatar'
 import { Modal } from '../../components/Modal'
 import { SelectField } from '../../components/FormFields'
-import { Skeleton, SkeletonCards, SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { useSections } from '../../contexts/SectionsContext'
@@ -64,14 +64,7 @@ export function AdminSectionDetail() {
     return (
       <div className="space-y-6">
         <Header title="Section" subtitle="Loading section…" onMenuClick={openMenu} />
-        <SkeletonCards count={4} />
-        <Card className="p-0 sm:p-0">
-          <div className="flex items-center justify-between border-b border-line px-5 py-4 sm:px-6">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-          <SkeletonRows rows={6} />
-        </Card>
+        <PageLoader label="Loading section" />
       </div>
     )
   }
@@ -165,7 +158,7 @@ export function AdminSectionDetail() {
         </div>
 
         {loading && roster.length === 0 ? (
-          <SkeletonRows rows={6} />
+          <PageLoader label="Fetching students" />
         ) : (
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full min-w-[820px] text-left text-sm">

@@ -16,7 +16,7 @@ import { Header } from '../../components/Header'
 import { StatCard } from '../../components/StatCard'
 import { SectionCard } from '../../components/Card'
 import { QuickLink } from '../../components/QuickLink'
-import { Skeleton, SkeletonCards } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useApi } from '../../lib/api'
 import { mapActivityIcon, mapEvent, type ApiEvent } from '../../lib/mappers'
@@ -93,12 +93,11 @@ export function AdminDashboard() {
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />
+      ) : initialLoading ? (
+        <PageLoader label="Loading your dashboard" size={130} className="min-h-[440px]" />
       ) : (
         <>
       {/* Statistics */}
-      {initialLoading ? (
-        <SkeletonCards count={4} />
-      ) : (
       <section aria-label="Statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={Users}
@@ -127,7 +126,6 @@ export function AdminDashboard() {
           footnoteClassName="text-success"
         />
       </section>
-      )}
 
       {/* Activity + upcoming events */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -136,19 +134,7 @@ export function AdminDashboard() {
           icon={<Activity size={18} className="text-primary" aria-hidden="true" />}
           className="lg:col-span-3"
         >
-          {initialLoading ? (
-            <div role="status" aria-label="Loading activity" className="min-h-[200px] space-y-5">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="flex items-start gap-3.5">
-                  <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/4" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : feed.length > 0 ? (
+          {feed.length > 0 ? (
             <ul>
               {feed.map((item) => (
                 <ActivityRow key={item.id} item={item} />
@@ -166,19 +152,6 @@ export function AdminDashboard() {
           actionTo="/admin/events"
           className="lg:col-span-2"
         >
-          {initialLoading ? (
-            <div role="status" aria-label="Loading upcoming events" className="min-h-[180px] space-y-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-3.5">
-                  <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
           <ul className="flex-1 divide-y divide-line">
             {upcoming.map((event) => {
               const d = new Date(`${event.dateISO}T00:00:00`)
@@ -204,7 +177,6 @@ export function AdminDashboard() {
               )
             })}
           </ul>
-          )}
           <Link
             to="/admin/events"
             className="mt-4 flex items-center justify-center gap-1 rounded-xl bg-primary-lighter px-3 py-2.5 text-sm font-semibold text-primary-dark transition-colors duration-200 hover:bg-primary hover:text-white"

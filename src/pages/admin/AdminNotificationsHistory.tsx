@@ -4,7 +4,7 @@ import { Calendar, ChevronDown, ChevronUp, History as HistoryIcon, Search, Users
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
-import { SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { StatusBadge } from '../../components/StatusBadge'
 import { apiFetch, useApi } from '../../lib/api'
@@ -181,9 +181,7 @@ export function AdminNotificationsHistory() {
             <ErrorState message={error} onRetry={reload} compact />
           </div>
         ) : loading && !data ? (
-          <div className="mt-4">
-            <SkeletonRows rows={6} />
-          </div>
+          <PageLoader label="Fetching history" />
         ) : rows.length === 0 ? (
           <p className="mt-6 rounded-xl border border-dashed border-line bg-primary-lighter/40 px-6 py-10 text-center text-sm text-ink-soft">
             No notifications found for the current filters. Send your first notification from{' '}

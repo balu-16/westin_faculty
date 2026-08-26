@@ -8,6 +8,7 @@ export function AdminEvents() {
       sessionKey="admin-portal.session"
       headerSubtitle="Manage the college event calendar shared across portals"
       listTitle="All Events"
+      loadingLabel="Fetching events"
     />
   )
 }

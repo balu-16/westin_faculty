@@ -18,7 +18,7 @@
 
   --shadow-card: 0 2px 10px rgba(20, 33, 61, 0.04);
   --shadow-card-hover: 0 10px 24px rgba(59, 167, 242, 0.12);
-  --shadow-sidebar: 0 20px 60px rgba(5, 20, 45, 0.45);
+  --shadow-sidebar: 0 20px 60px rgba(14, 110, 189, 0.22);
 
   --animate-fade-in: fade-in 0.25s ease-out both;
   --animate-slide-in: slide-in 0.2s ease-out both;
@@ -138,10 +138,10 @@ body {
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.18);
 }
 .sidebar-scroll {
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
 }
 
 /* Respect reduced-motion: entrance animations resolve instantly, loops stop */

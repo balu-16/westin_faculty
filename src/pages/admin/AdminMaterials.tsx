@@ -5,6 +5,7 @@ export function AdminMaterials() {
     <ManageMaterials
       headerSubtitle="Oversee study materials shared across all subjects"
       sessionKey="admin-portal.session"
+      loadingLabel="Fetching materials"
     />
   )
 }

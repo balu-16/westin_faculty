@@ -23,7 +23,7 @@ import { Card, SectionCard } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Modal } from '../../components/Modal'
 import { SelectField, TextAreaField, TextField } from '../../components/FormFields'
-import { Skeleton, SkeletonRows, Spinner } from '../../components/Loading'
+import { PageLoader, Skeleton, SkeletonRows, Spinner } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, useApi, type SessionKey } from '../../lib/api'
@@ -392,13 +392,16 @@ interface ManageEventsProps {
   sessionKey: SessionKey
   headerSubtitle: string
   listTitle: string
+  /** When set, initial loading shows the Westin Walker with this label instead
+   *  of skeletons (opt-in — portals adopt the walker one at a time). */
+  loadingLabel?: string
 }
 
 /**
  * Events manager shared by the faculty and admin portals — add, edit and
  * delete events. The same pool syncs to the student portal.
  */
-export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubtitle, listTitle }: ManageEventsProps) {
+export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubtitle, listTitle, loadingLabel }: ManageEventsProps) {
   const { openMenu } = useOutletContext<PortalLayoutContext>()
   const toast = useToast()
 
@@ -524,6 +527,8 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
         <div className="space-y-6 xl:col-span-7">
           {error && !data ? (
             <ErrorState message={error} onRetry={reload} />
+          ) : initialLoading && loadingLabel ? (
+            <PageLoader label={loadingLabel} />
           ) : (
             <>
           {initialLoading ? (

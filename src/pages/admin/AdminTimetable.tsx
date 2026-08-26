@@ -18,7 +18,7 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { SubTabs } from '../../components/SubTabs'
 import { Modal } from '../../components/Modal'
-import { Skeleton, SkeletonRows, Spinner } from '../../components/Loading'
+import { PageLoader, Spinner } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { FileField, SelectField } from '../../components/FormFields'
@@ -898,7 +898,7 @@ export function AdminTimetable() {
             </div>
 
             {slotsPending ? (
-              <SkeletonRows rows={5} />
+              <PageLoader label="Fetching timetable" size={110} className="min-h-[260px] py-6" />
             ) : daySlots.length > 0 ? (
               <ul>
                 {daySlots.map((slot) => (
@@ -944,13 +944,7 @@ export function AdminTimetable() {
           </Card>
         </>
       ) : slotsPending ? (
-        <Card className="p-0 sm:p-0">
-          <div className="border-b border-line px-5 py-4 sm:px-6">
-            <Skeleton className="h-5 w-44" />
-            <Skeleton className="mt-2 h-3 w-64" />
-          </div>
-          <SkeletonRows rows={6} />
-        </Card>
+        <PageLoader label="Fetching timetable" />
       ) : (
         <WeekOverview slots={sectionSlots} catalog={catalog} />
       )}

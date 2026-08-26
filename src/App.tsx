@@ -4,7 +4,7 @@ import { FacultyAuthProvider } from './contexts/FacultyAuthContext'
 import { AdminAuthProvider } from './contexts/AdminAuthContext'
 import { SectionsProvider } from './contexts/SectionsContext'
 import { ToastProvider } from './components/Toast'
-import { Spinner } from './components/Loading'
+import { PageLoader, Spinner } from './components/Loading'
 import { FacultyLayout } from './layouts/FacultyLayout'
 import { AdminLayout } from './layouts/AdminLayout'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -57,6 +57,12 @@ function PageFallback() {
   )
 }
 
+/** Walker fallback for admin routes — the chunk load shows the section's own
+ *  dedicated label, so it never fights the page's data-loading state. */
+function AdminPageFallback({ label }: { label: string }) {
+  return <PageLoader label={label} className="min-h-[60vh]" />
+}
+
 export default function App() {
   return (
     <FacultyAuthProvider>
@@ -94,28 +100,28 @@ export default function App() {
               <Route
                 path="/admin/login"
                 element={
-                  <Suspense fallback={<LoginFallback />}>
+                  <Suspense fallback={<AdminPageFallback label="Loading sign-in" />}>
                     <AdminLogin />
                   </Suspense>
                 }
               />
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<Suspense fallback={<PageFallback />}><AdminDashboard /></Suspense>} />
-                <Route path="teachers" element={<Suspense fallback={<PageFallback />}><AdminTeachers /></Suspense>} />
-                <Route path="students" element={<Suspense fallback={<PageFallback />}><AdminStudents /></Suspense>} />
-                <Route path="sections" element={<Suspense fallback={<PageFallback />}><AdminSections /></Suspense>} />
-                <Route path="sections/:sectionId" element={<Suspense fallback={<PageFallback />}><AdminSectionDetail /></Suspense>} />
-                <Route path="timetable" element={<Suspense fallback={<PageFallback />}><AdminTimetable /></Suspense>} />
-                <Route path="events" element={<Suspense fallback={<PageFallback />}><AdminEvents /></Suspense>} />
-                <Route path="materials" element={<Suspense fallback={<PageFallback />}><AdminMaterials /></Suspense>} />
-                <Route path="reports" element={<Suspense fallback={<PageFallback />}><AdminReports /></Suspense>} />
-                <Route path="notifications/send" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSend /></Suspense>} />
-                <Route path="notifications/templates" element={<Suspense fallback={<PageFallback />}><AdminNotificationsTemplates /></Suspense>} />
-                <Route path="notifications/history" element={<Suspense fallback={<PageFallback />}><AdminNotificationsHistory /></Suspense>} />
-                <Route path="notifications/settings" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSettings /></Suspense>} />
+                <Route index element={<Suspense fallback={<AdminPageFallback label="Loading your dashboard" />}><AdminDashboard /></Suspense>} />
+                <Route path="teachers" element={<Suspense fallback={<AdminPageFallback label="Fetching teachers" />}><AdminTeachers /></Suspense>} />
+                <Route path="students" element={<Suspense fallback={<AdminPageFallback label="Fetching students" />}><AdminStudents /></Suspense>} />
+                <Route path="sections" element={<Suspense fallback={<AdminPageFallback label="Fetching sections" />}><AdminSections /></Suspense>} />
+                <Route path="sections/:sectionId" element={<Suspense fallback={<AdminPageFallback label="Loading section" />}><AdminSectionDetail /></Suspense>} />
+                <Route path="timetable" element={<Suspense fallback={<AdminPageFallback label="Fetching timetable" />}><AdminTimetable /></Suspense>} />
+                <Route path="events" element={<Suspense fallback={<AdminPageFallback label="Fetching events" />}><AdminEvents /></Suspense>} />
+                <Route path="materials" element={<Suspense fallback={<AdminPageFallback label="Fetching materials" />}><AdminMaterials /></Suspense>} />
+                <Route path="reports" element={<Suspense fallback={<AdminPageFallback label="Fetching reports" />}><AdminReports /></Suspense>} />
+                <Route path="notifications/send" element={<Suspense fallback={<AdminPageFallback label="Loading notifications" />}><AdminNotificationsSend /></Suspense>} />
+                <Route path="notifications/templates" element={<Suspense fallback={<AdminPageFallback label="Fetching templates" />}><AdminNotificationsTemplates /></Suspense>} />
+                <Route path="notifications/history" element={<Suspense fallback={<AdminPageFallback label="Fetching history" />}><AdminNotificationsHistory /></Suspense>} />
+                <Route path="notifications/settings" element={<Suspense fallback={<AdminPageFallback label="Loading settings" />}><AdminNotificationsSettings /></Suspense>} />
                 {/* Back-compat: /admin/notifications → send */}
-                <Route path="notifications" element={<Suspense fallback={<PageFallback />}><AdminNotificationsSend /></Suspense>} />
-                <Route path="settings" element={<Suspense fallback={<PageFallback />}><AdminSettings /></Suspense>} />
+                <Route path="notifications" element={<Suspense fallback={<AdminPageFallback label="Loading notifications" />}><AdminNotificationsSend /></Suspense>} />
+                <Route path="settings" element={<Suspense fallback={<AdminPageFallback label="Loading settings" />}><AdminSettings /></Suspense>} />
               </Route>
 
               <Route path="*" element={<Navigate to="/faculty/login" replace />} />
