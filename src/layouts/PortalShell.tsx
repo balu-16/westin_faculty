@@ -99,8 +99,9 @@ export function PortalShell({
         avatarUrl={avatarUrl}
         collapsed={collapsed}
         onLogout={handleLogout}
+        onToggleCollapsed={toggleSidebar}
       />
-      <div className={collapsed ? 'lg:pl-[88px]' : 'lg:pl-[288px]'}>
+      <div className={collapsed ? 'lg:pl-[72px] transition-[padding] duration-300' : 'lg:pl-[280px] transition-[padding] duration-300'}>
         <main className="mx-auto w-full max-w-[1200px] animate-fade-in px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet context={context} />
         </main>

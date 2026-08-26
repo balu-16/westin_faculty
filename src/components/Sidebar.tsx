@@ -1,8 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { PanelLeftClose, PanelLeftOpen, Search, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import westinLogo from '../assets/images/westin-logo.avif'
-import { CampusIllustration } from './CampusIllustration'
 import { ProfileCard } from './ProfileCard'
 import { cx } from '../utils'
 
@@ -22,6 +21,7 @@ interface SidebarContentProps {
   collapsed?: boolean
   onLogout: () => void
   onNavigate?: () => void
+  onToggleCollapsed?: () => void
 }
 
 function SidebarContent({
@@ -33,140 +33,299 @@ function SidebarContent({
   collapsed,
   onLogout,
   onNavigate,
+  onToggleCollapsed,
 }: SidebarContentProps) {
-  const width = collapsed ? 'w-[88px]' : 'w-[288px]'
-  // On mobile the drawer should not exceed viewport width (iPhone SE = 320px)
-  const responsiveWidth = collapsed ? width : 'w-[82vw] max-w-[288px] lg:w-[288px]'
+  const width = collapsed ? 'w-[72px]' : 'w-[280px]'
+  const responsiveWidth = collapsed ? width : 'w-[82vw] max-w-[320px] lg:w-[280px]'
+
+  // Heuristic grouping for ink premium: keep original order but inject section labels
+  const renderFlatAsGroups = () => {
+    // Build groups based on portalTitle to give meaningful sections without changing navItems source
+    const isAdmin = portalTitle.toLowerCase().includes('admin')
+    let groups: { label: string; items: NavItem[] }[] = []
+
+    if (isAdmin) {
+      // Admin: Dashboard | Management (Teachers, Students, Sections, Timetable) | Content (Events, Materials, Reports) | Notifications (group) | Account
+      const byTo = new Map(navItems.map((i) => [i.to, i] as const))
+      const pick = (tos: string[]) => tos.map((t) => byTo.get(t)).filter(Boolean) as NavItem[]
+      groups = [
+        { label: 'Overview', items: pick(['/admin']) },
+        { label: 'Management', items: pick(['/admin/teachers', '/admin/students', '/admin/sections', '/admin/timetable']) },
+        { label: 'Content', items: pick(['/admin/events', '/admin/materials', '/admin/reports']) },
+        // Notifications handled separately as expandable group — not in flat groups
+        { label: 'Account', items: pick(['/admin/settings']) },
+      ].filter((g) => g.items.length > 0)
+    } else {
+      const byTo = new Map(navItems.map((i) => [i.to, i] as const))
+      const pick = (tos: string[]) => tos.map((t) => byTo.get(t)).filter(Boolean) as NavItem[]
+      groups = [
+        { label: 'Overview', items: pick(['/faculty']) },
+        { label: 'Academics', items: pick(['/faculty/timetable', '/faculty/attendance', '/faculty/sections']) },
+        { label: 'Resources', items: pick(['/faculty/events', '/faculty/materials']) },
+        { label: 'Operations', items: pick(['/faculty/reports']) },
+        { label: 'Account', items: pick(['/faculty/settings']) },
+      ].filter((g) => g.items.length > 0)
+    }
+    // fallback if heuristic misses items (e.g. custom)
+    const groupedTos = new Set(groups.flatMap((g) => g.items.map((i) => i.to)))
+    const leftover = navItems.filter((i) => !groupedTos.has(i.to) && !i.children)
+    if (leftover.length) groups.push({ label: 'Other', items: leftover })
+    return groups
+  }
+
+  const flatGroups = renderFlatAsGroups()
+  const notificationGroup = navItems.find((i) => Array.isArray(i.children) && i.children.length > 0)
+
   return (
-    <div className={cx('flex h-full shrink-0 flex-col bg-gradient-to-b from-[#4FB0F4] via-[#3BA7F2] to-[#168BE5]', responsiveWidth)}>
-      {/* Mobile top bar inside drawer — hamburger to close (no X) */}
-      {onNavigate && (
-        <div className="flex items-center justify-between px-4 pt-3 pb-2 lg:hidden">
-          <span className="text-xs font-bold uppercase tracking-[0.12em] text-white/80">Menu</span>
-          <button
-            type="button"
-            onClick={onNavigate}
-            aria-label="Close navigation menu"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/25"
-          >
-            <Menu size={18} aria-hidden="true" />
-          </button>
-        </div>
+    <div
+      className={cx(
+        'flex h-full shrink-0 flex-col overflow-hidden border-r border-white/[0.06] bg-gradient-to-b from-[#14213D] via-[#0F1F3A] to-[#0A162A] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_20px_60px_rgba(5,20,45,0.55)]',
+        responsiveWidth,
       )}
-      {/* College logo + portal title */}
-      <div className={cx('pt-2 lg:pt-4', collapsed ? 'px-2' : 'px-4')}>
-        <div className="mx-auto w-fit max-w-full rounded-xl bg-white p-1.5 shadow-[0_6px_18px_rgba(20,33,61,0.08)]">
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+      {/* Header */}
+      <div className={cx('relative flex shrink-0 items-center', collapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 pt-4 pb-3')}>
+        <div className="shrink-0 rounded-xl bg-white p-1.5 shadow-[0_4px_14px_rgba(0,0,0,0.28)]">
           <img
             src={westinLogo}
             width={575}
             height={294}
             decoding="async"
-            alt="Westin College — College Of Hotel Management, College Of Business Management, Junior College"
-            className="mx-auto block h-auto max-h-12 w-auto max-w-full"
+            alt="Westin College"
+            className={cx('block h-auto object-contain', collapsed ? 'w-8' : 'w-9')}
           />
         </div>
+
         {!collapsed && (
           <>
-            <p className="mt-2 text-center text-[15px] font-bold text-white">{portalTitle}</p>
-            <div className="mx-2 mt-2.5 h-px bg-white/25" role="presentation" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-extrabold leading-none tracking-tight text-white">Westin College</p>
+              <p className="truncate text-[11px] font-semibold tracking-[0.08em] text-white/60">{portalTitle}</p>
+            </div>
+            {onToggleCollapsed && (
+              <button
+                type="button"
+                onClick={onToggleCollapsed}
+                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                title={collapsed ? 'Expand' : 'Collapse'}
+                className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/[0.10] hover:text-white lg:flex"
+              >
+                <PanelLeftClose size={16} aria-hidden="true" />
+              </button>
+            )}
           </>
         )}
-        {collapsed && <div className="mx-2 mt-2.5 h-px bg-white/25" role="presentation" />}
+
+        {collapsed && onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="absolute -right-3 top-6 hidden h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-ink-soft shadow-md transition-colors hover:text-primary lg:flex"
+          >
+            <PanelLeftOpen size={12} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
-      {/* Navigation — modular: supports optional collapsible children (e.g., Notifications → Send/History/Settings) */}
-      <nav aria-label="Portal navigation" className={cx('flex-1 overflow-y-auto scrollbar-thin', collapsed ? 'space-y-1 px-2' : 'space-y-1 px-4')}>
-        {navItems.map((item) => {
-          const hasChildren = Array.isArray(item.children) && item.children.length > 0
-          if (hasChildren && collapsed) {
-            // Collapsed: show parent icon linking to first child, plus children icons underneath
-            return (
-              <div key={item.to} className="space-y-1">
-                <NavLink
-                  to={item.children![0].to}
-                  onClick={onNavigate}
-                  title={item.label}
-                  aria-label={item.label}
-                  className={({ isActive }) =>
-                    cx(
-                      'flex h-[52px] items-center justify-center rounded-xl text-base font-semibold transition-all duration-200',
-                      isActive ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]' : 'text-white/90 hover:bg-white/15 hover:text-white',
-                    )
-                  }
-                >
-                  <item.icon size={21} aria-hidden="true" />
-                </NavLink>
-              </div>
-            )
-          }
-          if (hasChildren) {
-            return (
-              <div key={item.to} className="space-y-1">
-                <p className="px-4 pt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-white/70">{item.label}</p>
-                {item.children!.map((child) => (
-                  <NavLink
-                    key={child.to}
-                    to={child.to}
-                    end
-                    onClick={onNavigate}
-                    className={({ isActive }) =>
-                      cx(
-                        'flex h-[44px] items-center gap-2.5 rounded-xl px-4 text-sm font-semibold transition-all duration-200',
-                        isActive
-                          ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]'
-                          : 'text-white/90 hover:bg-white/15 hover:text-white',
-                      )
-                    }
-                  >
-                    <child.icon size={18} aria-hidden="true" />
-                    {child.label}
-                  </NavLink>
-                ))}
-              </div>
-            )
-          }
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end
-              onClick={onNavigate}
-              title={collapsed ? item.label : undefined}
-              aria-label={collapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                cx(
-                  'flex h-[52px] items-center rounded-xl text-base font-semibold transition-all duration-200',
-                  collapsed ? 'justify-center px-2' : 'gap-2.5 px-4',
-                  isActive
-                    ? 'bg-white text-primary-dark shadow-[0_4px_12px_rgba(20,33,61,0.08)]'
-                    : 'text-white/90 hover:bg-white/15 hover:text-white',
-                )
-              }
-            >
-              <item.icon size={21} aria-hidden="true" />
-              {!collapsed && item.label}
-            </NavLink>
-          )
-        })}
-      </nav>
-
-      {/* Campus illustration fading into the sidebar */}
-      {!collapsed && (
-        <div className="pointer-events-none select-none px-3 opacity-95">
-          <CampusIllustration tone="white" />
+      {onNavigate && (
+        <div className="flex items-center justify-between px-4 pb-2 lg:hidden">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/45">Menu</span>
+          <button
+            type="button"
+            onClick={onNavigate}
+            aria-label="Close navigation menu"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] text-white backdrop-blur-sm transition-colors hover:bg-white/[0.10]"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
       )}
 
-      {/* Profile card */}
-      <div className={cx(collapsed ? 'px-2 pb-5 pt-2' : 'px-4 pb-5 pt-2')}>
-        <ProfileCard name={profileName} detail={profileDetail} avatarUrl={avatarUrl} collapsed={collapsed} onLogout={onLogout} />
+      {!collapsed && <div className="mx-4 h-px shrink-0 bg-white/[0.06]" />}
+
+      {/* Search */}
+      {!collapsed && (
+        <div className="shrink-0 px-3 pt-3">
+          <label className="group relative flex">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-white/65">
+              <Search size={14} aria-hidden="true" />
+            </span>
+            <input
+              type="search"
+              placeholder="Search"
+              aria-label="Search navigation"
+              className="h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 pl-9 pr-9 text-sm font-medium text-white placeholder:text-white/38 backdrop-blur-sm transition-all hover:border-white/[0.12] hover:bg-white/[0.06] focus:border-white/[0.14] focus:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-white/10"
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-md border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-bold leading-none tracking-wide text-white/45 sm:flex">
+              ⌘K
+            </span>
+          </label>
+        </div>
+      )}
+
+      {collapsed && <div className="mx-2 mt-3 h-px shrink-0 bg-white/[0.06]" />}
+
+      {/* Nav */}
+      <nav
+        aria-label="Portal navigation"
+        className={cx('flex-1 overflow-y-auto overflow-x-hidden py-3 sidebar-scroll', collapsed ? 'space-y-1 px-2' : 'space-y-5 px-3')}
+      >
+        {collapsed ? (
+          <>
+            {navItems.map((item) => {
+              const hasChildren = Array.isArray(item.children) && item.children.length > 0
+              if (hasChildren) {
+                return (
+                  <div key={item.to} className="group relative flex justify-center">
+                    <NavLink
+                      to={item.children![0].to}
+                      onClick={onNavigate}
+                      aria-label={item.label}
+                      title={item.label}
+                      className={({ isActive }) =>
+                        cx(
+                          'flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200',
+                          isActive ? 'bg-white text-[#0F1F3A] shadow-[0_4px_14px_rgba(0,0,0,0.28)]' : 'text-white/68 hover:bg-white/[0.06] hover:text-white',
+                        )
+                      }
+                    >
+                      <item.icon size={20} aria-hidden="true" />
+                    </NavLink>
+                    <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-20 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0F1F3A] px-2.5 py-1.5 text-xs font-semibold text-white shadow-xl group-hover:block">
+                      {item.label}
+                      <span className="absolute right-full top-1/2 h-2 w-2 -translate-y-1/2 translate-x-[3px] rotate-45 border-b border-l border-white/10 bg-[#0F1F3A]" />
+                    </span>
+                  </div>
+                )
+              }
+              return (
+                <div key={item.to} className="group relative flex justify-center">
+                  <NavLink
+                    to={item.to}
+                    end
+                    onClick={onNavigate}
+                    aria-label={item.label}
+                    title={item.label}
+                    className={({ isActive }) =>
+                      cx(
+                        'flex h-11 w-11 items-center justify-center rounded-xl transition-all duration-200',
+                        isActive ? 'bg-white text-[#0F1F3A] shadow-[0_4px_14px_rgba(0,0,0,0.28)]' : 'text-white/68 hover:bg-white/[0.06] hover:text-white',
+                      )
+                    }
+                  >
+                    <item.icon size={20} aria-hidden="true" />
+                  </NavLink>
+                  <span className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-20 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0F1F3A] px-2.5 py-1.5 text-xs font-semibold text-white shadow-xl group-hover:block">
+                    {item.label}
+                    <span className="absolute right-full top-1/2 h-2 w-2 -translate-y-1/2 translate-x-[3px] rotate-45 border-b border-l border-white/10 bg-[#0F1F3A]" />
+                  </span>
+                </div>
+              )
+            })}
+          </>
+        ) : (
+          <>
+            {flatGroups.map((group) => (
+              <div key={group.label} className="space-y-1">
+                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/38">{group.label}</p>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to !== '/admin' && item.to !== '/faculty'}
+                      onClick={onNavigate}
+                      className={({ isActive }) =>
+                        cx(
+                          'group flex h-[42px] items-center gap-3 rounded-xl px-3 text-[13.5px] font-semibold transition-all duration-200',
+                          isActive ? 'bg-white text-[#0F1F3A] shadow-[0_4px_14px_rgba(0,0,0,0.28)]' : 'text-white/72 hover:bg-white/[0.06] hover:text-white',
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <span
+                            className={cx(
+                              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+                              isActive ? 'bg-[#0F1F3A]/[0.07] text-[#0F1F3A]' : 'bg-white/[0.06] text-white/70 group-hover:bg-white/[0.10] group-hover:text-white',
+                            )}
+                          >
+                            <item.icon size={16} aria-hidden="true" />
+                          </span>
+                          <span className="truncate">{item.label}</span>
+                          {isActive && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#0F1F3A]" aria-hidden="true" />}
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {notificationGroup && (
+              <div className="space-y-1">
+                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/38">{notificationGroup.label}</p>
+                <div className="space-y-0.5">
+                  {notificationGroup.children!.map((child) => (
+                    <NavLink
+                      key={child.to}
+                      to={child.to}
+                      end
+                      onClick={onNavigate}
+                      className={({ isActive }) =>
+                        cx(
+                          'flex h-[40px] items-center gap-3 rounded-xl px-3 text-[13px] font-medium transition-all duration-200',
+                          isActive ? 'bg-white text-[#0F1F3A] shadow-[0_4px_14px_rgba(0,0,0,0.22)]' : 'text-white/62 hover:bg-white/[0.06] hover:text-white',
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <span
+                            className={cx(
+                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                              isActive ? 'bg-[#0F1F3A]/[0.07] text-[#0F1F3A]' : 'bg-white/[0.05] text-white/55',
+                            )}
+                          >
+                            <child.icon size={14} aria-hidden="true" />
+                          </span>
+                          <span className="truncate">{child.label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </nav>
+
+      {/* Bottom */}
+      <div className="relative shrink-0">
+        {!collapsed && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-28 opacity-[0.05]"
+            style={{
+              background: 'radial-gradient(ellipse 360px 110px at 50% 100%, white 0%, transparent 70%)',
+            }}
+          />
+        )}
+        <div className={cx('relative', collapsed ? 'px-2 pb-3 pt-2' : 'px-3 pb-4 pt-2')}>
+          <ProfileCard name={profileName} detail={profileDetail} avatarUrl={avatarUrl} collapsed={collapsed} onLogout={onLogout} />
+        </div>
+        <div className="h-[env(safe-area-inset-bottom)]" />
       </div>
     </div>
   )
 }
 
 interface SidebarProps {
-  /** Mobile drawer open state */
   open: boolean
   onClose: () => void
   portalTitle: string
@@ -176,6 +335,7 @@ interface SidebarProps {
   avatarUrl?: string | null
   collapsed?: boolean
   onLogout: () => void
+  onToggleCollapsed?: () => void
 }
 
 export function Sidebar({
@@ -188,6 +348,7 @@ export function Sidebar({
   avatarUrl,
   collapsed,
   onLogout,
+  onToggleCollapsed,
 }: SidebarProps) {
   return (
     <>
@@ -202,28 +363,23 @@ export function Sidebar({
             avatarUrl={avatarUrl}
             collapsed={collapsed}
             onLogout={onLogout}
+            onToggleCollapsed={onToggleCollapsed}
           />
         </div>
       </aside>
 
       {/* Mobile drawer */}
-      <div
-        className={cx(
-          'fixed inset-0 z-50 lg:hidden',
-          open ? 'pointer-events-auto' : 'pointer-events-none',
-        )}
-        aria-hidden={!open}
-      >
+      <div className={cx('fixed inset-0 z-50 lg:hidden', open ? 'pointer-events-auto' : 'pointer-events-none')} aria-hidden={!open}>
         <div
           onClick={onClose}
           className={cx(
-            'absolute inset-0 bg-ink/40 backdrop-blur-[2px] transition-opacity duration-200',
+            'absolute inset-0 bg-[#060E1F]/55 backdrop-blur-[6px] transition-opacity duration-300',
             open ? 'opacity-100' : 'opacity-0',
           )}
         />
         <div
           className={cx(
-            'absolute inset-y-0 left-0 w-[82vw] max-w-[288px] transition-transform duration-300 ease-out',
+            'absolute inset-y-0 left-0 overflow-hidden rounded-r-[20px] shadow-[0_20px_80px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out',
             open ? 'translate-x-0' : '-translate-x-full',
           )}
         >
