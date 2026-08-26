@@ -1,13 +1,15 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Expand,
   Images,
   Image as ImageIcon,
   MapPin,
+  Maximize2,
   Megaphone,
   Music,
   PartyPopper,
@@ -969,6 +971,23 @@ function EventGalleryManager({ event, sessionKey }: { event: PortalEvent; sessio
   const images = data?.images ?? []
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const openLightbox = (idx: number) => setLightboxIndex(idx)
+  const closeLightbox = () => setLightboxIndex(null)
+  const goNext = () => setLightboxIndex((prev) => (prev !== null ? (prev + 1) % images.length : null))
+  const goPrev = () => setLightboxIndex((prev) => (prev !== null ? (prev - 1 + images.length) % images.length : null))
+
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox()
+      if (e.key === 'ArrowRight') goNext()
+      if (e.key === 'ArrowLeft') goPrev()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIndex, images.length])
 
   const handleFiles = async (files: FileList | File[]) => {
     const list = Array.from(files as FileList)
@@ -1065,32 +1084,93 @@ function EventGalleryManager({ event, sessionKey }: { event: PortalEvent; sessio
           <p className="text-sm text-ink-soft">No gallery images yet. Upload the first one above.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {images.map((img) => (
-            <div key={img.id} className="group relative overflow-hidden rounded-xl border border-line bg-white">
-              {img.url ? (
-                <img src={img.url} alt="Event gallery" className="h-36 w-full object-cover" />
-              ) : (
-                <div className="flex h-36 items-center justify-center bg-primary-lighter text-ink-soft">
-                  <ImageIcon size={20} />
+        <>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-ink">Gallery ({images.length})</h4>
+            <button
+              type="button"
+              onClick={() => openLightbox(0)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft hover:border-primary/40 hover:text-primary"
+            >
+              <Maximize2 size={12} /> Fullscreen
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {images.map((img, idx) => (
+              <div key={img.id} className="group relative overflow-hidden rounded-xl border border-line bg-white">
+                <button type="button" onClick={() => openLightbox(idx)} className="block w-full">
+                  {img.url ? (
+                    <img src={img.url} alt="Event gallery" className="h-36 w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]" />
+                  ) : (
+                    <div className="flex h-36 items-center justify-center bg-primary-lighter text-ink-soft">
+                      <ImageIcon size={20} />
+                    </div>
+                  )}
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                    <Expand size={18} className="text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(img.id)}
+                  aria-label="Delete image"
+                  className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1.5 text-ink-soft opacity-0 shadow transition-all group-hover:opacity-100 hover:bg-danger hover:text-white"
+                >
+                  <Trash2 size={12} />
+                </button>
+                <div className="px-2 py-1.5">
+                  <p className="truncate text-xs font-medium text-ink-soft capitalize">{img.kind}</p>
                 </div>
-              )}
-              <button
-                type="button"
-                onClick={() => handleDelete(img.id)}
-                aria-label="Delete image"
-                className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1.5 text-ink-soft opacity-0 shadow transition-all group-hover:opacity-100 hover:bg-danger hover:text-white"
-              >
-                <Trash2 size={12} />
-              </button>
-              <div className="px-2 py-1.5">
-                <p className="truncate text-xs font-medium text-ink-soft capitalize">{img.kind}</p>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
       <p className="text-xs text-ink-soft">Images are visible to students immediately after upload.</p>
+
+      {lightboxIndex !== null && images[lightboxIndex]?.url && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Gallery fullscreen"
+        >
+          <button
+            type="button"
+            onClick={closeLightbox}
+            aria-label="Close fullscreen"
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2.5 text-white backdrop-blur hover:bg-white/20"
+          >
+            <X size={20} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); goPrev() }}
+            aria-label="Previous image"
+            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur hover:bg-white/20 sm:left-4"
+          >
+            <ChevronLeft size={22} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); goNext() }}
+            aria-label="Next image"
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white backdrop-blur hover:bg-white/20 sm:right-4"
+          >
+            <ChevronRight size={22} />
+          </button>
+          <img
+            src={images[lightboxIndex].url!}
+            alt="Gallery fullscreen"
+            className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+            {lightboxIndex + 1} / {images.length}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
