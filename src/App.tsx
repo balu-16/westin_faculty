@@ -132,6 +132,7 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/faculty"
         element={
           <RequireFacultyAuth>
             <FacultyLayout />
@@ -161,6 +162,7 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/admin"
         element={
           <RequireAdminAuth>
             <AdminLayout />
