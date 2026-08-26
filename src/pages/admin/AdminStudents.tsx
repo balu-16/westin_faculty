@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { GraduationCap, Monitor, Pencil, Plus, Search, TriangleAlert } from 'lucide-react'
+import { Filter, GraduationCap, Monitor, Pencil, Plus, Search, SlidersHorizontal, TriangleAlert, X } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
@@ -143,6 +143,10 @@ export function AdminStudents() {
   const [sectionFilter, setSectionFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [page, setPage] = useState(1)
+  const [attendanceFilter, setAttendanceFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [yearFilter, setYearFilter] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
 
   // Debounce the search box so the API is hit once typing settles (300 ms)
   // instead of on every keystroke; the input itself stays bound to `query`.
@@ -208,7 +212,35 @@ export function AdminStudents() {
   }>({})
   const [savingEdit, setSavingEdit] = useState(false)
 
-  const filtered = rows
+  const hasActiveStudentFilters =
+    attendanceFilter !== 'all' || statusFilter !== 'all' || yearFilter !== 'all' || query.trim() !== '' || sectionFilter !== 'all'
+
+  const filtered = useMemo(() => {
+    return rows.filter((s) => {
+      if (attendanceFilter !== 'all') {
+        const a = s.attendance
+        if (attendanceFilter === 'atRisk' && a >= 75) return false
+        if (attendanceFilter === 'critical' && a >= 60) return false
+        if (attendanceFilter === 'average' && (a < 75 || a >= 85)) return false
+        if (attendanceFilter === 'good' && (a < 85 || a >= 90)) return false
+        if (attendanceFilter === 'excellent' && a < 90) return false
+        if (attendanceFilter === 'below75' && a >= 75) return false
+        if (attendanceFilter === 'below60' && a >= 60) return false
+      }
+      if (statusFilter !== 'all' && s.status !== statusFilter) return false
+      if (yearFilter !== 'all' && s.year !== yearFilter) return false
+      return true
+    })
+  }, [rows, attendanceFilter, statusFilter, yearFilter])
+
+  const clearStudentFilters = () => {
+    setAttendanceFilter('all')
+    setStatusFilter('all')
+    setYearFilter('all')
+    setQuery('')
+    setSectionFilter('all')
+    setPage(1)
+  }
 
   const openAdd = () => {
     setName('')
@@ -390,8 +422,134 @@ export function AdminStudents() {
                   ▾
                 </span>
               </label>
+              <button
+                type="button"
+                onClick={() => setShowFilters((v) => !v)}
+                aria-expanded={showFilters}
+                aria-label="Toggle filters"
+                className={cx(
+                  'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors',
+                  showFilters || hasActiveStudentFilters ? 'border-primary bg-primary text-white shadow-sm' : 'border-line bg-white text-ink-soft hover:border-primary/40 hover:text-primary',
+                )}
+              >
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                Filters
+                {hasActiveStudentFilters && (
+                  <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-xs font-bold">
+                    {[
+                      sectionFilter !== 'all',
+                      attendanceFilter !== 'all',
+                      statusFilter !== 'all',
+                      yearFilter !== 'all',
+                    ].filter(Boolean).length + (query.trim() ? 1 : 0)}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
+          {showFilters && (
+            <div className="flex flex-wrap items-center gap-3 border-b border-line bg-primary-lighter/40 px-5 py-3 sm:px-6">
+              <div className="flex items-center gap-2">
+                <Filter size={14} className="text-ink-soft" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Filters</span>
+              </div>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-soft">Attendance</span>
+                <select
+                  value={attendanceFilter}
+                  onChange={(e) => {
+                    setAttendanceFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-8 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
+                >
+                  <option value="all">All</option>
+                  <option value="atRisk">Below 75% (At Risk)</option>
+                  <option value="critical">Below 60% (Critical)</option>
+                  <option value="average">75% - 84% (Average)</option>
+                  <option value="good">85% - 89% (Good)</option>
+                  <option value="excellent">90%+ (Excellent)</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-soft">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-8 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
+                >
+                  <option value="all">All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-soft">Year</span>
+                <select
+                  value={yearFilter}
+                  onChange={(e) => {
+                    setYearFilter(e.target.value)
+                    setPage(1)
+                  }}
+                  className="h-8 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
+                >
+                  <option value="all">All Years</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              </label>
+              {hasActiveStudentFilters && (
+                <button
+                  type="button"
+                  onClick={clearStudentFilters}
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft shadow-sm transition-colors hover:bg-danger/10 hover:text-danger"
+                >
+                  <X size={12} aria-hidden="true" />
+                  Clear all
+                </button>
+              )}
+            </div>
+          )}
+          {hasActiveStudentFilters && !showFilters && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-line bg-primary-lighter/30 px-5 py-2 sm:px-6">
+              <span className="text-xs font-medium text-ink-soft">Active filters:</span>
+              {sectionFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {directorySections.find((s) => s.id === sectionFilter)?.name ?? sectionFilter}
+                  <button type="button" onClick={() => { setSectionFilter('all'); setPage(1) }} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {attendanceFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {attendanceFilter === 'atRisk' ? '<75% At Risk' : attendanceFilter === 'critical' ? '<60% Critical' : attendanceFilter === 'average' ? '75-84%' : attendanceFilter === 'good' ? '85-89%' : '90%+'}
+                  <button type="button" onClick={() => setAttendanceFilter('all')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {statusFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {statusFilter} <button type="button" onClick={() => setStatusFilter('all')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {yearFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {yearFilter} <button type="button" onClick={() => setYearFilter('all')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {query.trim() && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  Search: “{query.trim()}” <button type="button" onClick={() => setQuery('')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              <button type="button" onClick={clearStudentFilters} className="ml-auto text-xs font-semibold text-primary-dark hover:text-primary">
+                Clear all
+              </button>
+            </div>
+          )}
 
           {error && !data ? (
             <div className="p-5 sm:p-6">
@@ -423,9 +581,18 @@ export function AdminStudents() {
           )}
 
           {filtered.length === 0 && !loading && !error && (
-            <p className="px-6 py-10 text-center text-sm text-ink-soft">
-              No students match the current filters.
-            </p>
+            <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+              <p className="text-sm text-ink-soft">No students match the current filters.</p>
+              {hasActiveStudentFilters && (
+                <button
+                  type="button"
+                  onClick={clearStudentFilters}
+                  className="rounded-full bg-primary-light px-4 py-1.5 text-xs font-semibold text-primary-dark hover:bg-primary hover:text-white"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">

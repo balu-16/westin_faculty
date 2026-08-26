@@ -104,6 +104,8 @@ export interface ApiEvent {
   isLive: boolean
   description: string | null
   createdBy: string | null
+  posterPath?: string | null
+  posterUrl?: string | null
 }
 
 export interface ApiReport {
@@ -208,6 +210,8 @@ export function mapEvent(raw: ApiEvent): PortalEvent {
     accent: eventAccent(raw.category),
     createdBy: raw.createdBy ?? '',
     isLive: raw.isLive,
+    posterPath: raw.posterPath ?? null,
+    posterUrl: raw.posterUrl ?? null,
   }
 }
 

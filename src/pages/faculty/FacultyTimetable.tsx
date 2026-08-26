@@ -4,7 +4,7 @@ import { CalendarDays, Users } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { TimetableCard } from '../../components/TimetableCard'
 import { SectionCard } from '../../components/Card'
-import { Skeleton, SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useApi } from '../../lib/api'
 import { mapWeek, type ApiWeekDay } from '../../lib/mappers'
@@ -52,11 +52,7 @@ export function FacultyTimetable() {
         aria-label="Select weekday"
         className="flex gap-2 overflow-x-auto rounded-2xl border border-line bg-white p-2 shadow-card scrollbar-thin"
       >
-        {initialLoading
-          ? Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={`day-${i}`} className="h-10 flex-1" />
-            ))
-          : week.map(({ day }, i) => {
+        {week.map(({ day }, i) => {
           const active = i === activeIndex
           return (
             <button
@@ -79,22 +75,14 @@ export function FacultyTimetable() {
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />
+      ) : initialLoading ? (
+        <PageLoader label="Fetching timetable" />
       ) : (
         <>
       <SectionCard
         title={`${schedule.day}'s Classes`}
         icon={<CalendarDays size={18} className="text-primary" aria-hidden="true" />}
       >
-        {initialLoading ? (
-          <div role="status" aria-label="Loading timetable" className="min-h-[240px] space-y-3">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-4 w-[104px] shrink-0" />
-                <Skeleton className="h-16 flex-1" />
-              </div>
-            ))}
-          </div>
-        ) : (
         <div
           ref={trackRef}
           onScroll={handleScroll}
@@ -123,7 +111,6 @@ export function FacultyTimetable() {
             </div>
           ))}
         </div>
-        )}
       </SectionCard>
 
       {/* Sections for the selected day — derived from the same day's classes */}
@@ -131,9 +118,6 @@ export function FacultyTimetable() {
         title={`${schedule.day}'s Sections`}
         icon={<Users size={18} className="text-primary" aria-hidden="true" />}
       >
-        {initialLoading ? (
-          <SkeletonRows rows={4} />
-        ) : (
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full min-w-[520px] text-left text-sm">
             <thead>
@@ -157,7 +141,6 @@ export function FacultyTimetable() {
             </tbody>
           </table>
         </div>
-        )}
       </SectionCard>
         </>
       )}

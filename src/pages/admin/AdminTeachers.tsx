@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, type FormEvent } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Monitor, Pencil, Plus, Search, Users } from 'lucide-react'
+import { Filter, Monitor, Pencil, Plus, Search, SlidersHorizontal, Users, X } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
@@ -22,6 +22,7 @@ import {
   type Paginated,
 } from '../../lib/mappers'
 import type { LoginLog, TeacherRow } from '../../types'
+import { cx } from '../../utils'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 /** One memoized login-log row — skips re-rendering while typing in the list
@@ -160,6 +161,10 @@ export function AdminTeachers() {
 
   const [tab, setTab] = useState('list')
   const [query, setQuery] = useState('')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [designationFilter, setDesignationFilter] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
@@ -195,11 +200,30 @@ export function AdminTeachers() {
   }>({})
   const [savingEdit, setSavingEdit] = useState(false)
 
-  const filtered = rows.filter(
-    (t) =>
-      t.name.toLowerCase().includes(query.trim().toLowerCase()) ||
-      t.department.toLowerCase().includes(query.trim().toLowerCase()),
-  )
+  const departmentOptions = useMemo(() => {
+    const set = new Set(rows.map((r) => r.department).filter(Boolean))
+    return ['all', ...Array.from(set).sort()]
+  }, [rows])
+
+  const hasActiveTeacherFilters = departmentFilter !== 'all' || statusFilter !== 'all' || designationFilter !== 'all' || query.trim() !== ''
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return rows.filter((t) => {
+      const matchesSearch = !q || t.name.toLowerCase().includes(q) || t.department.toLowerCase().includes(q) || t.email.toLowerCase().includes(q)
+      const matchesDept = departmentFilter === 'all' || t.department === departmentFilter
+      const matchesStatus = statusFilter === 'all' || t.status === statusFilter
+      const matchesDesig = designationFilter === 'all' || t.designation === designationFilter
+      return matchesSearch && matchesDept && matchesStatus && matchesDesig
+    })
+  }, [rows, query, departmentFilter, statusFilter, designationFilter])
+
+  const clearTeacherFilters = () => {
+    setQuery('')
+    setDepartmentFilter('all')
+    setStatusFilter('all')
+    setDesignationFilter('all')
+  }
 
   const openAdd = () => {
     setName('')
@@ -360,22 +384,131 @@ export function AdminTeachers() {
         <Card className="p-0 sm:p-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 sm:px-6">
             <h3 className="text-base font-semibold text-ink">All Faculty</h3>
-            <div className="relative">
-              <Search
-                size={15}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft/70"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search faculty..."
-                aria-label="Search faculty"
-                className="h-9 w-48 rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:outline-none sm:w-56"
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search
+                  size={15}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft/70"
+                  aria-hidden="true"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search faculty..."
+                  aria-label="Search faculty"
+                  className="h-9 w-48 rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:outline-none sm:w-56"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowFilters((v) => !v)}
+                aria-expanded={showFilters}
+                aria-label="Toggle filters"
+                className={cx(
+                  'inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors',
+                  showFilters || hasActiveTeacherFilters ? 'border-primary bg-primary text-white shadow-sm' : 'border-line bg-white text-ink-soft hover:border-primary/40 hover:text-primary',
+                )}
+              >
+                <SlidersHorizontal size={14} aria-hidden="true" />
+                Filters
+                {hasActiveTeacherFilters && (
+                  <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-xs font-bold">
+                    {[departmentFilter !== 'all', statusFilter !== 'all', designationFilter !== 'all'].filter(Boolean).length + (query.trim() ? 1 : 0)}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
+          {showFilters && (
+            <div className="flex flex-wrap items-center gap-3 border-b border-line bg-primary-lighter/40 px-5 py-3 sm:px-6">
+              <div className="flex items-center gap-2">
+                <Filter size={14} className="text-ink-soft" aria-hidden="true" />
+                <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">Filters</span>
+              </div>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-soft">Dept</span>
+                <select
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="h-8 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
+                >
+                  <option value="all">All Departments</option>
+                  {departmentOptions
+                    .filter((d) => d !== 'all')
+                    .map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-soft">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-8 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs font-medium text-ink-soft">Role</span>
+                <select
+                  value={designationFilter}
+                  onChange={(e) => setDesignationFilter(e.target.value)}
+                  className="h-8 rounded-lg border border-line bg-white px-2.5 text-sm font-medium text-ink focus:border-primary focus:outline-none"
+                >
+                  <option value="all">All Designations</option>
+                  <option value="Professor">Professor</option>
+                  <option value="Associate Professor">Associate Professor</option>
+                  <option value="Assistant Professor">Assistant Professor</option>
+                  <option value="Lecturer">Lecturer</option>
+                </select>
+              </label>
+              {hasActiveTeacherFilters && (
+                <button
+                  type="button"
+                  onClick={clearTeacherFilters}
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft shadow-sm transition-colors hover:bg-danger/10 hover:text-danger"
+                >
+                  <X size={12} aria-hidden="true" />
+                  Clear all
+                </button>
+              )}
+            </div>
+          )}
+          {hasActiveTeacherFilters && !showFilters && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-line bg-primary-lighter/30 px-5 py-2 sm:px-6">
+              <span className="text-xs font-medium text-ink-soft">Active filters:</span>
+              {query.trim() && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  Search: “{query.trim()}” <button type="button" onClick={() => setQuery('')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {departmentFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {departmentFilter} <button type="button" onClick={() => setDepartmentFilter('all')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {statusFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {statusFilter} <button type="button" onClick={() => setStatusFilter('all')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              {designationFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white">
+                  {designationFilter} <button type="button" onClick={() => setDesignationFilter('all')} className="ml-1 rounded-full p-0.5 hover:bg-white/20"><X size={10} /></button>
+                </span>
+              )}
+              <button type="button" onClick={clearTeacherFilters} className="ml-auto text-xs font-semibold text-primary-dark hover:text-primary">
+                Clear all
+              </button>
+            </div>
+          )}
 
           {error && !teachersData ? (
             <div className="p-5 sm:p-6">
@@ -406,9 +539,20 @@ export function AdminTeachers() {
           )}
 
           {!loading && !error && filtered.length === 0 && (
-            <p className="px-6 py-10 text-center text-sm text-ink-soft">
-              No faculty found for &quot;{query}&quot;.
-            </p>
+            <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+              <p className="text-sm text-ink-soft">
+                {hasActiveTeacherFilters ? 'No faculty match the current filters.' : `No faculty found for “${query}”.`}
+              </p>
+              {hasActiveTeacherFilters && (
+                <button
+                  type="button"
+                  onClick={clearTeacherFilters}
+                  className="rounded-full bg-primary-light px-4 py-1.5 text-xs font-semibold text-primary-dark hover:bg-primary hover:text-white"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           )}
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">

@@ -89,7 +89,7 @@ export function PortalShell({
 
   const handleLogout = () => {
     onLogout()
-    navigate(loginPath)
+    navigate(loginPath, { replace: true })
   }
 
   const effectiveCollapsed = collapsed && !hovered

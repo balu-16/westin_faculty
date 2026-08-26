@@ -12,6 +12,7 @@ export function FacultyEvents() {
       sessionKey="faculty-portal.session"
       headerSubtitle="Create and manage events for your classes"
       listTitle="My Events"
+      loadingLabel="Fetching events"
     />
   )
 }

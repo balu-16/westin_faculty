@@ -3,7 +3,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom'
 import { ChevronRight, Layers } from 'lucide-react'
 import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
-import { SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useSections } from '../../contexts/SectionsContext'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
@@ -58,7 +58,7 @@ export function FacultySections() {
             <ErrorState message={error} onRetry={() => void reload()} />
           </div>
         ) : initialLoading ? (
-          <SkeletonRows rows={6} />
+          <PageLoader label="Fetching sections" />
         ) : (
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full min-w-[720px] text-left text-sm">

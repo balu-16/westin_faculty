@@ -14,7 +14,7 @@ import { TimetableCard } from '../../components/TimetableCard'
 import { AnnouncementCard } from '../../components/AnnouncementCard'
 import { QuickLink } from '../../components/QuickLink'
 import { SectionCard } from '../../components/Card'
-import { Skeleton, SkeletonCards } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useApi } from '../../lib/api'
 import {
@@ -75,12 +75,11 @@ export function FacultyDashboard() {
 
       {error && !data ? (
         <ErrorState message={error} onRetry={reload} />
+      ) : initialLoading ? (
+        <PageLoader label="Loading your dashboard" size={130} className="min-h-[440px]" />
       ) : (
         <>
       {/* Statistics */}
-      {initialLoading ? (
-        <SkeletonCards count={4} />
-      ) : (
       <section aria-label="Statistics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={CalendarDays}
@@ -109,7 +108,6 @@ export function FacultyDashboard() {
           footnoteClassName="text-success"
         />
       </section>
-      )}
 
       {/* Timetable + pending reports */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
@@ -120,16 +118,7 @@ export function FacultyDashboard() {
           actionTo="/faculty/timetable"
           className="lg:col-span-3"
         >
-          {initialLoading ? (
-            <div role="status" aria-label="Loading today's classes" className="min-h-[220px] space-y-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-4 w-[104px] shrink-0" />
-                  <Skeleton className="h-16 flex-1" />
-                </div>
-              ))}
-            </div>
-          ) : todaySessions.length > 0 ? (
+          {todaySessions.length > 0 ? (
             <ol className="relative">
               <span
                 aria-hidden="true"
@@ -151,19 +140,7 @@ export function FacultyDashboard() {
           actionTo="/faculty/reports"
           className="lg:col-span-2"
         >
-          {initialLoading ? (
-            <div role="status" aria-label="Loading pending reports" className="min-h-[160px] space-y-6">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary-lighter" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-2/3" />
-                    <Skeleton className="h-3 w-1/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : data && data.pendingReports.length > 0 ? (
+          {data && data.pendingReports.length > 0 ? (
             <ul className="relative">
               <span
                 aria-hidden="true"
@@ -200,19 +177,7 @@ export function FacultyDashboard() {
           icon={<Megaphone size={18} className="text-primary" aria-hidden="true" />}
           className="lg:col-span-3"
         >
-          {initialLoading ? (
-            <div role="status" aria-label="Loading announcements" className="min-h-[160px] space-y-6">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary-lighter" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/5" />
-                    <Skeleton className="h-3 w-2/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : announcements.length > 0 ? (
+          {announcements.length > 0 ? (
             <ul className="relative">
               <span
                 aria-hidden="true"

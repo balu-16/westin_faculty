@@ -177,7 +177,7 @@ export function AdminSettings() {
 
   const handleLogout = () => {
     logout()
-    navigate('/admin/login')
+    navigate('/admin/login', { replace: true })
   }
   const handleAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if(!file) return

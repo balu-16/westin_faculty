@@ -6,7 +6,7 @@ import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { Avatar } from '../../components/Avatar'
 import { SelectField } from '../../components/FormFields'
-import { SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, ApiError, useApi } from '../../lib/api'
@@ -385,7 +385,7 @@ export function FacultyAttendance() {
                   <ErrorState message={rosterError} onRetry={reloadRoster} compact />
                 </div>
               ) : rosterLoading && !rosterData ? (
-                <SkeletonRows rows={6} />
+                <PageLoader label="Fetching students" size={110} className="min-h-[260px] py-6" />
               ) : (
                 <>
                   {/* Student list */}
@@ -420,9 +420,7 @@ export function FacultyAttendance() {
               <ErrorState message={sectionsError} onRetry={() => void reloadSections()} compact />
             </Card>
           ) : sectionsLoading && sections.length === 0 ? (
-            <Card className="p-0 sm:p-0">
-              <SkeletonRows rows={5} />
-            </Card>
+            <PageLoader label="Fetching sections" />
           ) : (
             <Card className="flex flex-col items-center gap-3 py-12 text-center">
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-light text-primary-dark">

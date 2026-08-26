@@ -5,7 +5,7 @@ import { Header } from '../../components/Header'
 import { Card } from '../../components/Card'
 import { Button } from '../../components/Button'
 import { FileField, SelectField, TextField } from '../../components/FormFields'
-import { SkeletonRows } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useToast } from '../../components/Toast'
 import { apiFetch, uploadBytes, useApi } from '../../lib/api'
@@ -213,7 +213,7 @@ export function FacultyReports() {
             <ErrorState message={error} onRetry={reload} compact />
           </div>
         ) : loading && !reportsData ? (
-          <SkeletonRows rows={5} />
+          <PageLoader label="Fetching reports" />
         ) : (
         <>
         <div className="hidden overflow-x-auto md:block scrollbar-thin">

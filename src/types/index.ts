@@ -65,6 +65,8 @@ export interface PortalEvent {
   accent: string
   createdBy: string
   isLive?: boolean
+  posterPath?: string | null
+  posterUrl?: string | null
 }
 
 export interface EventCategoryCount {

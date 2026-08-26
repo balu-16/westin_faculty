@@ -5,7 +5,7 @@ import { Header } from '../../components/Header'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Toggle } from '../../components/Toggle'
-import { Skeleton } from '../../components/Loading'
+import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { Avatar } from '../../components/Avatar'
 import { apiFetch, uploadBytes, useApi } from '../../lib/api'
@@ -173,7 +173,7 @@ export function FacultySettings() {
 
   const handleLogout = () => {
     logout()
-    navigate('/faculty/login')
+    navigate('/faculty/login', { replace: true })
   }
 
   const handleAvatarPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,14 +217,7 @@ export function FacultySettings() {
         {error && !settings ? (
           <ErrorState message={error} onRetry={reload} compact />
         ) : loading && !settings ? (
-          <div role="status" aria-label="Loading settings" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="h-3 w-20" />
-                <Skeleton className="h-11 w-full" />
-              </div>
-            ))}
-          </div>
+          <PageLoader label="Loading settings" />
         ) : (
         <>
         <div className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-line bg-white p-4">

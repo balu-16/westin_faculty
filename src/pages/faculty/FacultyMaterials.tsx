@@ -5,6 +5,7 @@ export function FacultyMaterials() {
     <ManageMaterials
       headerSubtitle="Upload and manage study materials shared with your students"
       sessionKey="faculty-portal.session"
+      loadingLabel="Fetching materials"
     />
   )
 }
