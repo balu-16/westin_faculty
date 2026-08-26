@@ -43,7 +43,6 @@ export function PortalShell({
       return false
     }
   })
-  const [hovered, setHovered] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -73,10 +72,6 @@ export function PortalShell({
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
 
-  useEffect(() => {
-    setHovered(false)
-  }, [collapsed, location.pathname])
-
   if (!isAuthenticated) {
     return <Navigate to={loginPath} replace state={{ from: location.pathname }} />
   }
@@ -92,8 +87,6 @@ export function PortalShell({
     navigate(loginPath, { replace: true })
   }
 
-  const effectiveCollapsed = collapsed && !hovered
-
   return (
     <div className="min-h-screen bg-page">
       <Sidebar
@@ -104,15 +97,11 @@ export function PortalShell({
         profileName={profileName}
         profileDetail={profileDetail}
         avatarUrl={avatarUrl}
-        collapsed={effectiveCollapsed}
+        collapsed={collapsed}
         onLogout={handleLogout}
         onToggleCollapsed={toggleSidebar}
-        onHoverEnter={() => {
-          if (collapsed) setHovered(true)
-        }}
-        onHoverLeave={() => setHovered(false)}
       />
-      <div className={effectiveCollapsed ? 'lg:pl-[72px] transition-[padding] duration-300' : 'lg:pl-[280px] transition-[padding] duration-300'}>
+      <div className={collapsed ? 'lg:pl-[72px] transition-[padding] duration-300' : 'lg:pl-[280px] transition-[padding] duration-300'}>
         <main className="mx-auto w-full max-w-[1200px] animate-fade-in px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet context={context} />
         </main>

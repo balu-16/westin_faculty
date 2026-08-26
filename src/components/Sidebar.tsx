@@ -314,8 +314,6 @@ interface SidebarProps {
   collapsed?: boolean
   onLogout: () => void
   onToggleCollapsed?: () => void
-  onHoverEnter?: () => void
-  onHoverLeave?: () => void
 }
 
 export function Sidebar({
@@ -329,18 +327,12 @@ export function Sidebar({
   collapsed,
   onLogout,
   onToggleCollapsed,
-  onHoverEnter,
-  onHoverLeave,
 }: SidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="hidden lg:block">
-        <div
-          className="fixed inset-y-0 left-0 z-30"
-          onMouseEnter={onHoverEnter}
-          onMouseLeave={onHoverLeave}
-        >
+        <div className="fixed inset-y-0 left-0 z-30">
           <SidebarContent
             portalTitle={portalTitle}
             navItems={navItems}

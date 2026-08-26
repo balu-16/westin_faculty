@@ -553,9 +553,12 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
       })
       await uploadBytes(url, posterFile, posterFile.type)
       setPosterPath(path)
+      toast.success('Poster uploaded — will be saved with the event')
       return path
     } catch (err) {
-      setPosterError(err instanceof Error ? err.message : 'Poster upload failed')
+      const msg = err instanceof Error ? err.message : 'Poster upload failed'
+      setPosterError(msg)
+      toast.danger(msg)
       throw err
     } finally {
       setPosterUploading(false)
@@ -979,6 +982,7 @@ function EventGalleryManager({ event, sessionKey }: { event: PortalEvent; sessio
       return
     }
     setUploading(true)
+    let success = 0
     for (const file of imageFiles) {
       try {
         const { path, url } = await apiFetch<{ path: string; url: string }>('/api/events/upload-url', {
@@ -992,11 +996,14 @@ function EventGalleryManager({ event, sessionKey }: { event: PortalEvent; sessio
           sessionKey,
           body: { storagePath: path, kind: 'gallery' },
         })
+        success++
       } catch (err) {
-        toast.danger(err instanceof Error ? err.message : `Upload failed for ${file.name}`)
+        const msg = err instanceof Error ? err.message : `Upload failed for ${file.name}`
+        toast.danger(msg)
       }
     }
     setUploading(false)
+    if (success > 0) toast.success(`${success} image${success > 1 ? 's' : ''} uploaded to gallery`)
     reload()
   }
 
