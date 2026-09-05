@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Mail } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { FallingIcons, HotelScene } from '../../components/HotelScene'
+import { OtpAnimation } from '../../components/OtpAnimation'
 import { InstallPwaBanner } from '../../components/InstallPwaBanner'
 import westinLogoAvif from '../../assets/images/westin-logo.avif'
 import westinLogoPng from '../../assets/images/westin-logo.png'
@@ -88,6 +89,7 @@ export function LoginScreen({
   const [sending, setSending] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [resending, setResending] = useState(false)
+  const [otpStatus, setOtpStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [error, setError] = useState('')
 
   const otpRefs = useRef<Array<HTMLInputElement | null>>([])
@@ -166,14 +168,22 @@ export function LoginScreen({
     setVerifying(true)
     try {
       await login(identifier.trim(), digits.join(''))
-      navigate(from, { replace: true })
+      setOtpStatus('success')
+      // Let the OTP success animation play (~1.4s into verified) before navigating
+      window.setTimeout(() => navigate(from, { replace: true }), 1400)
     } catch (err) {
-      setError(
-        err instanceof Error && err.message
-          ? err.message
-          : 'Verification failed. Please try again.',
-      )
+      const message =
+        err instanceof Error && err.message ? err.message : 'Verification failed. Please try again.'
+      setError(message)
+      setOtpStatus('error')
       setVerifying(false)
+      // Show red + X for ~2.2s, then allow retry with cleared inputs
+      window.setTimeout(() => {
+        setOtpStatus('idle')
+        setDigits(Array(OTP_LENGTH).fill(''))
+        // Refocus first box after the error animation clears
+        window.setTimeout(() => otpRefs.current[0]?.focus(), 100)
+      }, 2200)
     }
   }
 
@@ -384,6 +394,19 @@ export function LoginScreen({
                     {sending ? 'Sending OTP…' : 'Send OTP'}
                   </Button>
                 </form>
+              ) : otpStatus !== 'idle' ? (
+                <div className="py-2">
+                  <OtpAnimation
+                    digits={digits}
+                    phone={maskIdentifier(identifier.trim())}
+                    autoPlay
+                    width={340}
+                    variant={otpStatus === 'error' ? 'error' : 'success'}
+                  />
+                  <p className={`mt-4 text-center text-sm font-medium ${otpStatus === 'error' ? 'text-danger' : 'text-ink-soft'}`}>
+                    {otpStatus === 'error' ? (error || 'Incorrect code. Please try again.') : 'Verified — redirecting…'}
+                  </p>
+                </div>
               ) : (
                 <form onSubmit={handleVerify} noValidate>
                   {/* OTP boxes */}

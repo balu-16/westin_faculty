@@ -105,9 +105,16 @@ export function FacultyAttendance() {
   const navigate = useNavigate()
   const { sections, loading: sectionsLoading, error: sectionsError, reload: reloadSections } =
     useSections()
+  const { data: subjectsData } = useApi<Array<{ id: string; code: string; name: string }>>(
+    'faculty-portal.session',
+    '/api/subjects',
+    [],
+  )
 
   const [sectionId, setSectionId] = useState('')
   const [periodId, setPeriodId] = useState('')
+  const [subjectId, setSubjectId] = useState('')
+  const [viewDate, setViewDate] = useState<string | null>(null)
   const [marks, setMarks] = useState<Record<string, AttendanceMark>>({})
   const [submitted, setSubmitted] = useState<SubmittedAttendance | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -134,12 +141,21 @@ export function FacultyAttendance() {
   // Use recomputed value so roster stays Kolkata-correct even if the tab was open overnight
   const effectiveToday = todayISOValue || today
 
+  const rosterDate = viewDate ?? effectiveToday
   const rosterPath =
     sectionId && periodId
-      ? `/api/attendance/roster?sectionId=${sectionId}&date=${effectiveToday}&period=${periodId}`
+      ? `/api/attendance/roster?sectionId=${sectionId}&date=${rosterDate}&period=${periodId}`
       : null
   const { data: rosterData, error: rosterError, loading: rosterLoading, reload: reloadRoster } =
-    useApi<RosterPayload>('faculty-portal.session', rosterPath, [sectionId, periodId, effectiveToday])
+    useApi<RosterPayload>('faculty-portal.session', rosterPath, [sectionId, periodId, rosterDate])
+
+  const historyPath =
+    sectionId && periodId
+      ? `/api/attendance/history?sectionId=${sectionId}&period=${periodId}&limit=14`
+      : null
+  const { data: historyData, reload: reloadHistory } = useApi<
+    Array<{ sessionId: string; date: string; period: string; subject: string | null; present: number; absent: number; leave: number; total: number }>
+  >('faculty-portal.session', historyPath, [sectionId, periodId])
 
   const isEditable = rosterData ? rosterData.editable !== false : true
 
@@ -216,6 +232,7 @@ export function FacultyAttendance() {
             sectionId,
             date: submitDate,
             period: periodId,
+            subjectId: subjectId || undefined,
             records: roster.map((student) => ({
               studentId: student.id,
               status: marks[student.id] ?? 'present',
@@ -234,6 +251,7 @@ export function FacultyAttendance() {
       toast.success('Attendance submitted.')
       // Keep editable for same-day corrections — reload roster in background
       reloadRoster()
+      reloadHistory()
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
@@ -255,8 +273,8 @@ export function FacultyAttendance() {
   const reset = () => {
     setSubmitted(null)
     setCutoffError(null)
-    setSectionId('')
-    setPeriodId('')
+    // Keep section/period context so faculty can correct or take the next hour
+    // without reselecting everything (previous reset forced a full reselect).
   }
 
   const ready = sectionId && periodId
@@ -322,7 +340,7 @@ export function FacultyAttendance() {
                 <p className="text-xs text-ink-soft">Pick the section and hour you are handling.</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <SelectField
                 id="attendance-section"
                 label="Section"
@@ -341,8 +359,83 @@ export function FacultyAttendance() {
                 value={periodId}
                 onChange={(e) => setPeriodId(e.target.value)}
               />
+              <SelectField
+                id="attendance-subject"
+                label="Subject (optional)"
+                placeholder="Select subject"
+                options={(subjectsData ?? []).map((s) => ({ value: s.id, label: `${s.code} — ${s.name}` }))}
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+              />
+              <div>
+                <label htmlFor="attendance-date" className="mb-1.5 block text-sm font-medium text-ink">
+                  Date <span className="font-normal text-ink-soft">(browse history)</span>
+                </label>
+                <input
+                  id="attendance-date"
+                  type="date"
+                  value={rosterDate}
+                  max={effectiveToday}
+                  onChange={(e) => setViewDate(e.target.value || null)}
+                  className="h-11 w-full rounded-xl border border-line bg-white px-3.5 text-sm text-ink focus:border-primary focus:outline-none"
+                />
+                {viewDate && viewDate !== effectiveToday && (
+                  <button
+                    type="button"
+                    onClick={() => setViewDate(null)}
+                    className="mt-1.5 text-xs font-semibold text-primary-dark hover:text-primary"
+                  >
+                    Back to today ({effectiveToday})
+                  </button>
+                )}
+              </div>
             </div>
+            {viewDate && viewDate !== effectiveToday && (
+              <p className="mt-3 rounded-xl bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-800">
+                Viewing {viewDate} read-only — marking/editing is allowed only on the class date before midnight IST.
+              </p>
+            )}
           </Card>
+          {ready && historyData && historyData.length > 0 && (
+            <Card>
+              <h3 className="text-sm font-semibold text-ink">Last {historyData.length} sessions — {periodLabel(periodId)}</h3>
+              <div className="mt-3 overflow-x-auto scrollbar-thin">
+                <table className="w-full min-w-[520px] text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-line text-[11px] uppercase tracking-wide text-ink-soft">
+                      <th className="py-2 pr-3">Date</th>
+                      <th className="py-2 pr-3">Subject</th>
+                      <th className="py-2 pr-3">Present</th>
+                      <th className="py-2 pr-3">Absent</th>
+                      <th className="py-2 pr-3">Leave</th>
+                      <th className="py-2">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyData.map((h) => (
+                      <tr key={h.sessionId} className="border-b border-line/60 last:border-0">
+                        <td className="py-2 pr-3">
+                          <button
+                            type="button"
+                            onClick={() => setViewDate(h.date)}
+                            className="font-semibold text-primary-dark hover:text-primary hover:underline"
+                            title="View this date"
+                          >
+                            {h.date}
+                          </button>
+                        </td>
+                        <td className="py-2 pr-3 text-ink-soft">{h.subject ?? '—'}</td>
+                        <td className="py-2 pr-3 font-semibold text-success">{h.present}</td>
+                        <td className="py-2 pr-3 font-semibold text-danger">{h.absent}</td>
+                        <td className="py-2 pr-3 font-semibold text-warning">{h.leave}</td>
+                        <td className="py-2 text-ink-soft">{h.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
 
           {ready ? (
             <Card className="p-0 sm:p-0">

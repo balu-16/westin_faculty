@@ -125,13 +125,16 @@ export interface PeriodDef {
   label: string
 }
 
+/** Fixed bell schedule — single source of truth (12h display).
+ *  P1 09:00-10:00, P2 10:00-11:00, break 11:00-11:15, P3 11:15-12:30,
+ *  lunch 12:30-13:30, P4 13:30-14:30, P5 14:30-15:30, break 15:30-15:40, P6 15:40-17:00. */
 export const periods: PeriodDef[] = [
-  { id: 'h1', label: 'Hour 1 • 09:00 – 10:00 AM' },
-  { id: 'h2', label: 'Hour 2 • 10:15 – 11:15 AM' },
-  { id: 'h3', label: 'Hour 3 • 11:30 AM – 12:30 PM' },
-  { id: 'h4', label: 'Hour 4 • 01:15 – 02:15 PM' },
-  { id: 'h5', label: 'Hour 5 • 02:30 – 03:30 PM' },
-  { id: 'h6', label: 'Hour 6 • 03:45 – 04:45 PM' },
+  { id: 'h1', label: 'Hour 1 • 09:00 AM – 10:00 AM' },
+  { id: 'h2', label: 'Hour 2 • 10:00 AM – 11:00 AM' },
+  { id: 'h3', label: 'Hour 3 • 11:15 AM – 12:30 PM' },
+  { id: 'h4', label: 'Hour 4 • 01:30 PM – 02:30 PM' },
+  { id: 'h5', label: 'Hour 5 • 02:30 PM – 03:30 PM' },
+  { id: 'h6', label: 'Hour 6 • 03:40 PM – 05:00 PM' },
 ]
 
 export const periodLabel = (id: string) => periods.find((p) => p.id === id)?.label ?? id
@@ -140,14 +143,21 @@ export const periodLabel = (id: string) => periods.find((p) => p.id === id)?.lab
 
 export const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-/** Standard period times used across the college (display form). */
+/** Fixed teaching slots (12h display) — admins cannot edit times, only pick a slot. */
 export const canonicalPeriods: Array<{ start: string; end: string }> = [
   { start: '09:00 AM', end: '10:00 AM' },
-  { start: '10:15 AM', end: '11:15 AM' },
-  { start: '11:30 AM', end: '12:30 PM' },
-  { start: '01:15 PM', end: '02:15 PM' },
+  { start: '10:00 AM', end: '11:00 AM' },
+  { start: '11:15 AM', end: '12:30 PM' },
+  { start: '01:30 PM', end: '02:30 PM' },
   { start: '02:30 PM', end: '03:30 PM' },
-  { start: '03:45 PM', end: '04:45 PM' },
+  { start: '03:40 PM', end: '05:00 PM' },
+]
+
+/** Non-bookable gaps rendered as grey rows so every section stays synchronized. */
+export const fixedBreaks: Array<{ label: string; start: string; end: string }> = [
+  { label: 'Break', start: '11:00 AM', end: '11:15 AM' },
+  { label: 'Lunch Break', start: '12:30 PM', end: '01:30 PM' },
+  { label: 'Break', start: '03:30 PM', end: '03:40 PM' },
 ]
 
 /** "10:15 AM" → minutes since midnight. */

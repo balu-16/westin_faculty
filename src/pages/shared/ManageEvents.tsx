@@ -97,6 +97,7 @@ interface EventFormState {
   time: string
   location: string
   description: string
+  isLive: boolean
 }
 
 const emptyForm: EventFormState = {
@@ -107,6 +108,7 @@ const emptyForm: EventFormState = {
   time: '',
   location: '',
   description: '',
+  isLive: false,
 }
 
 interface FormErrors {
@@ -313,7 +315,15 @@ function EventRow({ event, showCreator, deleting = false, onEdit, onDelete, onGa
   )
 }
 
-function EventCalendarWidget({ events }: { events: PortalEvent[] }) {
+function EventCalendarWidget({
+  events,
+  selectedDay,
+  onSelectDay,
+}: {
+  events: PortalEvent[]
+  selectedDay: string | null
+  onSelectDay: (_day: string | null) => void
+}) {
   const [cursor, setCursor] = useState(() => new Date(`${todayISO}T00:00:00`))
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
@@ -326,15 +336,32 @@ function EventCalendarWidget({ events }: { events: PortalEvent[] }) {
   ]
 
   const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`
-  const liveDays = new Set(
-    events.filter((e) => e.isLive && e.dateISO.startsWith(monthPrefix)).map((e) => Number(e.dateISO.slice(8, 10))),
-  )
-  const upcomingDays = new Set(
-    events.filter((e) => !e.isLive && e.dateISO.startsWith(monthPrefix)).map((e) => Number(e.dateISO.slice(8, 10))),
-  )
+  // Expand multi-day ranges (start -> end) so 3-day fests dot every covered day.
+  const daysFor = (liveOnly: boolean) => {
+    const set = new Set<number>()
+    for (const e of events) {
+      if ((e.isLive ? true : false) !== liveOnly && (liveOnly || e.isLive)) {
+        if (liveOnly && !e.isLive) continue
+        if (!liveOnly && e.isLive) continue
+      }
+      const start = e.dateISO
+      const end = e.endDateISO && e.endDateISO > start ? e.endDateISO : start
+      const cursorD = new Date(`${start}T00:00:00Z`)
+      const stopD = new Date(`${end}T00:00:00Z`)
+      for (let i = 0; i < 120 && cursorD <= stopD; i++) {
+        const iso = cursorD.toISOString().slice(0, 10)
+        if (iso.startsWith(monthPrefix)) set.add(Number(iso.slice(8, 10)))
+        cursorD.setUTCDate(cursorD.getUTCDate() + 1)
+      }
+    }
+    return set
+  }
+  const liveDays = daysFor(true)
+  const upcomingDays = daysFor(false)
   const currentDay = todayISO.startsWith(monthPrefix) ? Number(todayISO.slice(8, 10)) : -1
 
   const shift = (delta: number) => setCursor(new Date(year, month + delta, 1))
+  const isoFor = (d: number) => `${monthPrefix}${String(d).padStart(2, '0')}`
 
   return (
     <Card>
@@ -373,20 +400,28 @@ function EventCalendarWidget({ events }: { events: PortalEvent[] }) {
           const isCurrent = day === currentDay
           const isLive = liveDays.has(day)
           const isUpcoming = upcomingDays.has(day)
+          const iso = isoFor(day)
+          const selected = selectedDay === iso
           return (
             <span key={day} className="flex items-center justify-center py-0.5">
-              <span
+              <button
+                type="button"
+                onClick={() => onSelectDay(selected ? null : iso)}
+                aria-pressed={selected}
+                aria-label={`${iso}${isLive ? ' (live event)' : isUpcoming ? ' (event)' : ''}`}
                 className={cx(
-                  'relative flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200',
-                  isCurrent
-                    ? 'bg-primary text-white'
-                    : isLive || isUpcoming
-                      ? 'bg-primary-light text-primary-dark'
-                      : 'text-ink-soft hover:bg-primary-lighter',
+                  'relative flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  selected
+                    ? 'bg-primary-dark text-white'
+                    : isCurrent
+                      ? 'bg-primary text-white'
+                      : isLive || isUpcoming
+                        ? 'bg-primary-light text-primary-dark hover:bg-primary hover:text-white'
+                        : 'text-ink-soft hover:bg-primary-lighter',
                 )}
               >
                 {day}
-                {(isLive || isUpcoming) && !isCurrent && (
+                {(isLive || isUpcoming) && !isCurrent && !selected && (
                   <span
                     aria-hidden="true"
                     className={cx(
@@ -395,7 +430,7 @@ function EventCalendarWidget({ events }: { events: PortalEvent[] }) {
                     )}
                   />
                 )}
-              </span>
+              </button>
             </span>
           )
         })}
@@ -403,14 +438,15 @@ function EventCalendarWidget({ events }: { events: PortalEvent[] }) {
 
       <div className="mt-4 flex items-center justify-center gap-5 border-t border-line pt-3 text-[11px] text-ink-soft">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 rounded-full bg-danger" aria-hidden="true" />
           Live Event
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full border-2 border-primary bg-white" aria-hidden="true" />
+          <span className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
           Upcoming Event
         </span>
       </div>
+      <p className="mt-2 text-center text-[11px] text-ink-soft">Click a day to filter the list.</p>
     </Card>
   )
 }
@@ -418,6 +454,7 @@ function EventCalendarWidget({ events }: { events: PortalEvent[] }) {
 interface EventsPayload {
   featured: ApiEvent | null
   upcoming: ApiEvent[]
+  past?: ApiEvent[]
   calendarMarks: string[]
   categories: Array<{ category: string; count: number }>
 }
@@ -446,8 +483,24 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
   const { openMenu } = useOutletContext<PortalLayoutContext>()
   const toast = useToast()
 
-  const { data, error, loading, reload } = useApi<EventsPayload>(sessionKey, '/api/events')
-  const events = useMemo(() => (data?.upcoming ?? []).map(mapEvent), [data])
+  const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<'upcoming' | 'past' | 'all'>('upcoming')
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  const eventsPath = useMemo(() => {
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('search', search.trim())
+    if (tab === 'past' || tab === 'all') params.set('includePast', 'true')
+    const qs = params.toString()
+    return qs ? `/api/events?${qs}` : '/api/events'
+  }, [search, tab])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const { data, error, loading, reload } = useApi<EventsPayload>(sessionKey, eventsPath, [eventsPath])
+  const allEvents = useMemo(() => {
+    const up = (data?.upcoming ?? []).map(mapEvent)
+    const past = (data?.past ?? []).map(mapEvent)
+    return tab === 'past' ? past : tab === 'all' ? [...up, ...past] : up
+  }, [data, tab])
+  const events = allEvents
   const categories = data?.categories ?? []
   const initialLoading = loading && !data
 
@@ -480,8 +533,14 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
         ? sorted.filter((e) => (ownerId ? e.createdBy === ownerId : e.createdBy === ownerName))
         : sorted
     if (activeCategory) list = list.filter((e) => e.category === activeCategory)
+    if (selectedDay) {
+      list = list.filter((e) => {
+        const end = e.endDateISO && e.endDateISO > e.dateISO ? e.endDateISO : e.dateISO
+        return e.dateISO <= selectedDay && selectedDay <= end
+      })
+    }
     return list
-  }, [sorted, scope, ownerId, ownerName, activeCategory])
+  }, [sorted, scope, ownerId, ownerName, activeCategory, selectedDay])
   const featured = data?.featured ? mapEvent(data.featured) : sorted[0]
 
   const set = (key: keyof EventFormState, value: string) => {
@@ -491,7 +550,7 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
 
   const openCreate = () => {
     setEditing(null)
-    setForm(emptyForm)
+    setForm({ ...emptyForm, date: todayISO })
     setErrors({})
     setPosterFile(null)
     setPosterPath(null)
@@ -510,6 +569,7 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
       time: event.time,
       location: event.location,
       description: event.description,
+      isLive: event.isLive ?? false,
     })
     setErrors({})
     setPosterFile(null)
@@ -576,11 +636,16 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
     e.preventDefault()
     const nextErrors: FormErrors = {}
     if (!form.title.trim()) nextErrors.title = 'Event name is required.'
+    else if (form.title.trim().length > 120) nextErrors.title = 'Keep the name under 120 characters.'
     if (!form.category) nextErrors.category = 'Select a category.'
     if (!form.date) nextErrors.date = 'Start date is required.'
+    if (form.endDate && form.endDate < form.date) nextErrors.date = 'End date cannot be before start date.'
     if (!form.time.trim()) nextErrors.time = 'Time is required.'
+    else if (form.time.trim().length > 60) nextErrors.time = 'Keep time under 60 characters.'
     if (!form.location.trim()) nextErrors.location = 'Location is required.'
+    else if (form.location.trim().length > 120) nextErrors.location = 'Keep location under 120 characters.'
     if (!form.description.trim()) nextErrors.description = 'Description is required.'
+    else if (form.description.trim().length > 2000) nextErrors.description = 'Keep description under 2000 characters.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
@@ -606,7 +671,7 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
         time: form.time.trim(),
         location: form.location.trim(),
         description: form.description.trim() || null,
-        isLive: editing?.isLive ?? false,
+        isLive: form.isLive,
       }
       if (finalPosterPath !== undefined) body.posterPath = finalPosterPath
 
@@ -677,23 +742,63 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
                 <Skeleton className="h-5 w-44" />
               </div>
             ) : (
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-base font-semibold text-ink">{listTitle}</h3>
-              <div className="flex items-center gap-2">
-                {activeCategory && (
-                  <button
-                    type="button"
-                    onClick={() => setActiveCategory(null)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-primary-light px-3 py-1.5 text-xs font-semibold text-primary-dark transition-colors hover:bg-primary hover:text-white"
-                  >
-                    {prettyCategory(activeCategory)}
-                    <X size={12} aria-hidden="true" />
-                    <span className="sr-only">Clear category filter</span>
-                  </button>
-                )}
-                <span className="text-sm font-medium text-ink-soft">{visible.length} events</span>
+            <>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-base font-semibold text-ink">{listTitle}</h3>
+                <div className="flex items-center gap-2">
+                  {(activeCategory || selectedDay) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveCategory(null)
+                        setSelectedDay(null)
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-primary-light px-3 py-1.5 text-xs font-semibold text-primary-dark transition-colors hover:bg-primary hover:text-white"
+                    >
+                      {activeCategory ? prettyCategory(activeCategory) : ''}
+                      {activeCategory && selectedDay ? ' • ' : ''}
+                      {selectedDay ? displayDate(selectedDay) : ''}
+                      <X size={12} aria-hidden="true" />
+                      <span className="sr-only">Clear filters</span>
+                    </button>
+                  )}
+                  <span className="text-sm font-medium text-ink-soft">{visible.length} events</span>
+                </div>
               </div>
-            </div>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search events…"
+                  aria-label="Search events"
+                  className="h-10 min-w-[180px] flex-1 rounded-xl border border-line bg-white px-3.5 text-sm text-ink placeholder:text-ink-soft/60 focus:border-primary focus:outline-none"
+                />
+                <div role="tablist" aria-label="Event time filter" className="flex gap-1 rounded-xl border border-line bg-primary-lighter/40 p-1">
+                  {(
+                    [
+                      { id: 'upcoming', label: 'Upcoming' },
+                      { id: 'past', label: 'Past' },
+                      { id: 'all', label: 'All' },
+                    ] as const
+                  ).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === t.id}
+                      onClick={() => setTab(t.id)}
+                      className={cx(
+                        'rounded-lg px-3 py-1.5 text-xs font-bold transition-colors',
+                        tab === t.id ? 'bg-primary text-white' : 'text-ink-soft hover:text-primary-dark',
+                      )}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
             )}
             {initialLoading ? (
               <SkeletonRows rows={4} />
@@ -742,7 +847,7 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
 
         {/* Sidebar column */}
         <div className="space-y-6 xl:col-span-3">
-          <EventCalendarWidget events={sorted} />
+          <EventCalendarWidget events={sorted} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
 
           {/* Promo card */}
           <div className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#4FB0F4] via-[#3BA7F2] to-[#168BE5] p-5 shadow-card">
@@ -903,6 +1008,18 @@ export function ManageEvents({ scope, ownerName, ownerId, sessionKey, headerSubt
             onChange={(e) => set('description', e.target.value)}
             error={errors.description}
           />
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-primary-lighter/40 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={form.isLive}
+              onChange={(e) => setForm((prev) => ({ ...prev, isLive: e.target.checked }))}
+              className="h-4 w-4 accent-[#FF3B6B]"
+            />
+            <span className="text-sm">
+              <span className="font-semibold text-ink">Mark as LIVE NOW</span>
+              <span className="block text-xs text-ink-soft">Shows in the featured banner with a live pulse.</span>
+            </span>
+          </label>
           <div className="space-y-3">
             <FileField
               label="Event Poster"

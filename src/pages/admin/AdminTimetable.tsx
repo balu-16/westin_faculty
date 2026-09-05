@@ -28,6 +28,7 @@ import { useSections } from '../../contexts/SectionsContext'
 import {
   canonicalPeriods,
   cx,
+  fixedBreaks,
   slotStartMinutes,
   timeToMinutes,
   to12h,
@@ -143,23 +144,30 @@ function normalizeTime(raw: string): string {
 
 const TEMPLATE_ROWS = [
   ['Section', 'Day', 'Time Slot', 'Subject', 'Faculty', 'Room'],
-  ['CSE-AIML 3A', 'Monday', '09:00 AM - 10:00 AM', 'CS301', 'Dr. Shreeram Hudda', 'Room 301'],
-  ['CSE-AIML 3A', 'Monday', '10:15 AM - 11:15 AM', 'CS302', 'Dr. Ravi Kant Kumar', 'Room 305'],
-  ['CSE-AIML 3B', 'Tuesday', '11:30 AM - 12:30 PM', 'Machine Learning', 'Dr. Priya Sharma', 'Room 309'],
+  ['CSE-AIML 3A', 'Monday', '09:00 AM - 10:00 AM', 'CS301', 'Faculty Name', 'Room 301'],
+  ['CSE-AIML 3A', 'Monday', '10:00 AM - 11:00 AM', 'CS302', 'Faculty Name', 'Room 305'],
+  ['CSE-AIML 3B', 'Tuesday', '11:15 AM - 12:30 PM', 'Machine Learning', 'Faculty Name', 'Room 309'],
+  ['CSE-AIML 3A', 'Monday', '01:30 PM - 02:30 PM', 'CS303', 'Faculty Name', 'Room 301'],
 ]
 
 interface InlineSelectProps {
   label: string
   value: string
   onChange: (_value: string) => void
-  options: Array<{ value: string; label: string }>
+  options: Array<{ value: string; label: string; disabled?: boolean; hint?: string }>
   placeholder: string
   danger?: boolean
+  badge?: string
 }
 
-function InlineSelect({ label, value, onChange, options, placeholder, danger }: InlineSelectProps) {
+function InlineSelect({ label, value, onChange, options, placeholder, danger, badge }: InlineSelectProps) {
   return (
     <div className="relative min-w-[150px] flex-1">
+      {badge && (
+        <span className="mb-1 inline-block rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-bold text-success">
+          {badge}
+        </span>
+      )}
       <select
         aria-label={label}
         value={value}
@@ -171,8 +179,9 @@ function InlineSelect({ label, value, onChange, options, placeholder, danger }: 
       >
         <option value="">{placeholder}</option>
         {options.map((o) => (
-          <option key={o.value} value={o.value}>
+          <option key={o.value} value={o.value} disabled={o.disabled} title={o.hint ?? o.label}>
             {o.label}
+            {o.disabled ? ' (busy)' : ''}
           </option>
         ))}
       </select>
@@ -185,6 +194,15 @@ function InlineSelect({ label, value, onChange, options, placeholder, danger }: 
   )
 }
 
+interface Availability {
+  sectionBusy: string | null
+  freeFaculty: Array<{ id: string; name: string }>
+  busyFaculty: Array<{ id: string; reason: string }>
+  freeRooms: Array<{ id: string; name: string }>
+  busyRooms: Array<{ id: string; reason: string }>
+  counts: { freeFaculty: number; freeRooms: number }
+}
+
 interface SlotRowProps {
   slot: TimetableSlot
   editing: boolean
@@ -193,13 +211,37 @@ interface SlotRowProps {
   catalog: Catalog
   /** A save is in flight — spinner on the confirm button prevents double-submits. */
   saving?: boolean
+  availability?: Availability | null
+  availabilityLoading?: boolean
   onEdit: () => void
   onConfirm: () => void
   onDelete: () => void
   onChange: (_patch: Partial<TimetableSlot>) => void
 }
 
-function SlotRow({ slot, editing, conflictMessage, catalog, saving = false, onEdit, onConfirm, onDelete, onChange }: SlotRowProps) {
+function SlotRow({ slot, editing, conflictMessage, catalog, saving = false, availability, availabilityLoading, onEdit, onConfirm, onDelete, onChange }: SlotRowProps) {
+  const facultyOptions = editing && availability
+    ? [
+        ...availability.freeFaculty.map((f) => ({ value: f.id, label: catalog.facultyName(f.id) || f.name })),
+        ...availability.busyFaculty.map((f) => ({
+          value: f.id,
+          label: catalog.facultyName(f.id) || f.reason,
+          disabled: true,
+          hint: f.reason,
+        })),
+      ]
+    : catalog.facultyOptions
+  const roomOptions = editing && availability
+    ? [
+        ...availability.freeRooms.map((r) => ({ value: r.id, label: catalog.roomLabel(r.id) || r.name })),
+        ...availability.busyRooms.map((r) => ({
+          value: r.id,
+          label: catalog.roomLabel(r.id) || r.reason,
+          disabled: true,
+          hint: r.reason,
+        })),
+      ]
+    : catalog.roomOptions
   return (
     <li
       className={cx(
@@ -219,7 +261,7 @@ function SlotRow({ slot, editing, conflictMessage, catalog, saving = false, onEd
             <InlineSelect
               label="Subject"
               value={slot.subjectId}
-              onChange={(v) => onChange({ subjectId: v, facultyId: '' })}
+              onChange={(v) => onChange({ subjectId: v })}
               options={catalog.subjectOptions}
               placeholder="Subject…"
             />
@@ -227,17 +269,24 @@ function SlotRow({ slot, editing, conflictMessage, catalog, saving = false, onEd
               label="Faculty"
               value={slot.facultyId}
               onChange={(v) => onChange({ facultyId: v })}
-              options={catalog.facultyOptions}
-              placeholder="Faculty…"
+              options={facultyOptions}
+              placeholder={availabilityLoading ? 'Checking who is free…' : 'Faculty… (only free shown as enabled)'}
+              badge={availability ? `${availability.counts.freeFaculty} free` : undefined}
             />
             <InlineSelect
               label="Room"
               value={slot.roomId}
               onChange={(v) => onChange({ roomId: v })}
-              options={catalog.roomOptions}
-              placeholder="Room…"
+              options={roomOptions}
+              placeholder={availabilityLoading ? 'Checking rooms…' : 'Room… (only free shown as enabled)'}
               danger={!!conflictMessage}
+              badge={availability ? `${availability.counts.freeRooms} free` : undefined}
             />
+            {availability?.sectionBusy && (
+              <p role="alert" className="w-full text-xs font-semibold text-warning">
+                {availability.sectionBusy} — pick another fixed slot.
+              </p>
+            )}
             <div className="flex shrink-0 gap-1.5">
               <button
                 type="button"
@@ -300,10 +349,23 @@ function SlotRow({ slot, editing, conflictMessage, catalog, saving = false, onEd
 
 function WeekOverview({ slots, catalog }: { slots: TimetableSlot[]; catalog: Catalog }) {
   const timeRows = useMemo(() => {
-    const keys = new Map<string, { start: string; end: string }>()
-    slots.forEach((s) => keys.set(`${s.start}-${s.end}`, { start: s.start, end: s.end }))
-    return [...keys.values()].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
+    // Fixed bell schedule first so every section is synchronized; any legacy
+    // off-schedule rows append after (they should not exist after migration).
+    const fixed = canonicalPeriods.map((p) => ({ start: p.start, end: p.end, fixed: true }))
+    const extra = new Map<string, { start: string; end: string }>()
+    slots.forEach((s) => {
+      const key = `${s.start}-${s.end}`
+      if (!canonicalPeriods.some((p) => `${p.start}-${p.end}` === key)) {
+        extra.set(key, { start: s.start, end: s.end })
+      }
+    })
+    const extras = [...extra.values()]
+      .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))
+      .map((t) => ({ ...t, fixed: false }))
+    return [...fixed, ...extras]
   }, [slots])
+
+  void fixedBreaks
 
   return (
     <Card className="p-0 sm:p-0">
@@ -334,6 +396,11 @@ function WeekOverview({ slots, catalog }: { slots: TimetableSlot[]; catalog: Cat
                 <td className="whitespace-nowrap px-5 py-3 sm:px-6">
                   <p className="font-semibold text-ink">{time.start}</p>
                   <p className="text-xs text-ink-soft">– {time.end}</p>
+                  {!time.fixed && (
+                    <span className="mt-1 inline-block rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold text-warning">
+                      Off-schedule
+                    </span>
+                  )}
                 </td>
                 {weekDays.map((day) => {
                   const slot = slots.find(
@@ -359,6 +426,21 @@ function WeekOverview({ slots, catalog }: { slots: TimetableSlot[]; catalog: Cat
                     </td>
                   )
                 })}
+              </tr>
+            ))}
+            {fixedBreaks.map((b) => (
+              <tr key={`${b.label}-${b.start}`} className="bg-page/60 text-xs text-ink-soft">
+                <td className="whitespace-nowrap px-5 py-2 sm:px-6">
+                  <p className="font-semibold">
+                    {b.start} – {b.end}
+                  </p>
+                  <p className="text-[11px]">{b.label} (no classes)</p>
+                </td>
+                {weekDays.map((day) => (
+                  <td key={day} className="px-4 py-2 text-center text-ink-soft/50">
+                    —
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -427,7 +509,12 @@ export function AdminTimetable() {
   const [view, setView] = useState('edit')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<Record<string, string>>({})
-  const [busy, setBusy] = useState(false)
+  /** Per-slot in-flight guard — fixes double-click double-POST (global busy was async-racy). */
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
+  /** Local edits to persisted server rows (updateSlot used to silently no-op on them). */
+  const [overrides, setOverrides] = useState<Record<string, Partial<TimetableSlot>>>({})
+  const [availability, setAvailability] = useState<Record<string, Availability | null>>({})
+  const [availabilityLoading, setAvailabilityLoading] = useState<Record<string, boolean>>({})
 
   // Default to the first section once the directory loads
   useEffect(() => {
@@ -445,12 +532,15 @@ export function AdminTimetable() {
     setDrafts([])
     setEditingId(null)
     setConflicts({})
+    setOverrides({})
+    setAvailability({})
+    setPendingIds(new Set())
   }, [sectionId])
 
-  const serverSlots = useMemo(
-    () => (slotsData ?? []).map((row) => mapApiSlot(row, sectionId)),
-    [slotsData, sectionId],
-  )
+  const serverSlots = useMemo(() => {
+    const base = (slotsData ?? []).map((row) => mapApiSlot(row, sectionId))
+    return base.map((s) => (overrides[s.id] ? { ...s, ...overrides[s.id] } : s))
+  }, [slotsData, sectionId, overrides])
   const timetable = useMemo(() => [...serverSlots, ...drafts], [serverSlots, drafts])
 
   const sectionSlots = useMemo(
@@ -485,12 +575,22 @@ export function AdminTimetable() {
     return err instanceof Error ? err.message : 'Could not save the period.'
   }
 
+  const isFixedSlot = (start: string, end: string) =>
+    canonicalPeriods.some((p) => p.start === start && p.end === end)
+
   const updateSlot = (id: string, patch: Partial<TimetableSlot>) => {
-    setDrafts((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
+    // Times are fixed — ignore any time patch so slots stay synchronized.
+    const { start: _s, end: _e, day: _d, ...rest } = patch
+    void _s
+    void _e
+    void _d
+    setDrafts((prev) => prev.map((s) => (s.id === id ? { ...s, ...rest } : s)))
+    setOverrides((prev) => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...rest } }))
     setConflicts((prev) => ({ ...prev, [id]: '' }))
   }
 
   const handleConfirmSlot = async (slot: TimetableSlot) => {
+    if (pendingIds.has(slot.id)) return // double-click guard (fixes duplicate POST)
     if (!slot.subjectId || !slot.facultyId || !slot.roomId) {
       setConflicts((prev) => ({
         ...prev,
@@ -498,24 +598,38 @@ export function AdminTimetable() {
       }))
       return
     }
-    setBusy(true)
+    if (!isFixedSlot(slot.start, slot.end)) {
+      const msg = 'Time must match the fixed bell schedule — pick a standard period.'
+      setConflicts((prev) => ({ ...prev, [slot.id]: msg }))
+      toast.danger(msg)
+      return
+    }
+    setPendingIds((prev) => new Set(prev).add(slot.id))
     try {
       const isDraft = drafts.some((d) => d.id === slot.id)
       if (isDraft) {
-        await apiFetch('/api/timetable/slots', {
+        await apiFetch<{ id: string }>('/api/timetable/slots', {
           method: 'POST',
           sessionKey: 'admin-portal.session',
           body: slotBody(slot),
         })
+        // Reconcile: drop the optimistic draft so reload doesn't render ghost duplicate.
+        setDrafts((prev) => prev.filter((d) => d.id !== slot.id))
       } else {
         await apiFetch(`/api/timetable/slots/${slot.id}`, {
           method: 'PUT',
           sessionKey: 'admin-portal.session',
           body: slotBody(slot),
         })
+        setOverrides((prev) => {
+          const next = { ...prev }
+          delete next[slot.id]
+          return next
+        })
       }
       setEditingId(null)
       setConflicts((prev) => ({ ...prev, [slot.id]: '' }))
+      toast.success(`${slot.start} – ${slot.end} saved for ${sectionLabelOf(sectionId)} (${slot.day}).`)
       reloadSlots()
     } catch (err) {
       // 409s carry the conflicting room/faculty/section details — surface
@@ -523,11 +637,16 @@ export function AdminTimetable() {
       setConflicts((prev) => ({ ...prev, [slot.id]: extractConflictMessage(err) }))
       toast.danger(extractConflictMessage(err))
     } finally {
-      setBusy(false)
+      setPendingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(slot.id)
+        return next
+      })
     }
   }
 
   const handleDeleteSlot = async (slot: TimetableSlot) => {
+    if (pendingIds.has(slot.id)) return
     if (drafts.some((d) => d.id === slot.id)) {
       setDrafts((prev) => prev.filter((d) => d.id !== slot.id))
       if (editingId === slot.id) setEditingId(null)
@@ -547,28 +666,55 @@ export function AdminTimetable() {
   }
 
   const handleAddPeriod = () => {
+    if (!sectionId) {
+      toast.danger('Select a section first.')
+      return
+    }
     const usedKeys = new Set(daySlots.map((s) => `${s.start}-${s.end}`))
-    const next =
-      canonicalPeriods.find((p) => !usedKeys.has(`${p.start}-${p.end}`)) ??
-      { start: '05:00 PM', end: '06:00 PM' }
-    const id = `draft-${Date.now()}`
-    setDrafts((prev) => [
-      ...prev,
-      {
-        id,
-        sectionId,
-        day,
-        start: next.start,
-        end: next.end,
-        subjectId: '',
-        facultyId: '',
-        roomId: '',
-      },
-    ])
+    const next = canonicalPeriods.find((p) => !usedKeys.has(`${p.start}-${p.end}`))
+    if (!next) {
+      toast.danger('All 6 fixed periods are already scheduled for this day.')
+      return
+    }
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? `draft-${crypto.randomUUID()}` : `draft-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    // Functional updater avoids stale-closure double-add picking the same slot twice.
+    setDrafts((prev) => {
+      const prevKeys = new Set([...daySlots.map((s) => `${s.start}-${s.end}`), ...prev.filter((d) => d.day === day).map((d) => `${d.start}-${d.end}`)])
+      if (prevKeys.has(`${next.start}-${next.end}`)) return prev
+      return [...prev, { id, sectionId, day, start: next.start, end: next.end, subjectId: '', facultyId: '', roomId: '' }]
+    })
     setEditingId(id)
   }
 
   const dayConflictCount = daySlots.filter((s) => conflicts[s.id]).length
+
+  // Fetch free/busy faculty+rooms for the currently edited slot so the
+  // dropdowns show only-free-enabled options with "N free" badges.
+  useEffect(() => {
+    if (!editingId || !sectionId) return
+    const slot = timetable.find((s) => s.id === editingId)
+    if (!slot) return
+    const key = editingId
+    let cancelled = false
+    setAvailabilityLoading((prev) => ({ ...prev, [key]: true }))
+    apiFetch<Availability>(
+      `/api/timetable/availability?sectionId=${sectionId}&day=${dayIndex(slot.day)}&startTime=${to24h(slot.start)}&endTime=${to24h(slot.end)}`,
+      { sessionKey: 'admin-portal.session' },
+    )
+      .then((res) => {
+        if (!cancelled) setAvailability((prev) => ({ ...prev, [key]: res }))
+      })
+      .catch(() => {
+        if (!cancelled) setAvailability((prev) => ({ ...prev, [key]: null }))
+      })
+      .finally(() => {
+        if (!cancelled) setAvailabilityLoading((prev) => ({ ...prev, [key]: false }))
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingId, sectionId])
 
   /** True while the period list cannot render meaningful content yet — either
    *  the slots request is in flight or the section directory has not loaded
@@ -594,6 +740,8 @@ export function AdminTimetable() {
       if (row.errors.length > 0 || !row.start || !row.end) return { ...row, conflict: '' }
 
       const rowLike: TimeLike = { day: row.day, start: row.start, end: row.end }
+      const fixed = canonicalPeriods.some((p) => p.start === row.start && p.end === row.end)
+      if (!fixed) return { ...row, conflict: 'Must match the fixed bell schedule (breaks/lunch cannot be booked)' }
 
       // Within the file: same room held by two sections, or a section double-booked
       const fileRoomClash = importRows.some(
@@ -605,17 +753,31 @@ export function AdminTimetable() {
           other.sectionId !== row.sectionId &&
           overlapsTime(other, rowLike),
       )
+      const fileFacultyClash = importRows.some(
+        (other) =>
+          other !== row &&
+          !other.errors.length &&
+          row.facultyId &&
+          other.facultyId === row.facultyId &&
+          overlapsTime(other, rowLike),
+      )
       const fileSectionClash = importRows.some(
         (other) =>
           other !== row && !other.errors.length && other.sectionId === row.sectionId && overlapsTime(other, rowLike),
       )
-      // Against the loaded timetable — cross-section room clashes are also
+      // Against the loaded timetable — cross-section room/faculty clashes are also
       // validated server-side on submit.
       const existingRoomClash = timetable.some(
         (existing) =>
           row.roomId &&
           existing.roomId === row.roomId &&
           existing.sectionId !== row.sectionId &&
+          overlapsTime(existing, rowLike),
+      )
+      const existingFacultyClash = timetable.some(
+        (existing) =>
+          row.facultyId &&
+          existing.facultyId === row.facultyId &&
           overlapsTime(existing, rowLike),
       )
       const existingSectionClash =
@@ -627,6 +789,8 @@ export function AdminTimetable() {
       if (fileSectionClash || existingSectionClash) return { ...row, conflict: 'Section double-booked at this time' }
       if (fileRoomClash || existingRoomClash)
         return { ...row, conflict: `Room ${row.roomRaw} already in use at this time` }
+      if (fileFacultyClash || existingFacultyClash)
+        return { ...row, conflict: `Faculty ${row.facultyRaw} already teaching at this time` }
       return { ...row, conflict: '' }
     })
   }, [importRows, importMode, timetable])
@@ -840,6 +1004,10 @@ export function AdminTimetable() {
         <p className="mt-4 text-xs leading-relaxed text-ink-soft">
           This master timetable drives what students and faculty see in their portals — every
           change is saved to the server immediately. Sections come from the Sections page.
+          Times are fixed (09:00 AM–10:00 AM, 10:00 AM–11:00 AM, 11:15 AM–12:30 PM, 01:30 PM–02:30 PM,
+          02:30 PM–03:30 PM, 03:40 PM–05:00 PM) with breaks 11:00–11:15 AM, lunch 12:30–01:30 PM and
+          break 03:30–03:40 PM — they cannot be edited so every section stays synchronized.
+          While editing, faculty/room dropdowns show only-free-enabled options with live availability.
         </p>
         {sectionsError && directorySections.length === 0 && (
           <div className="mt-4">
@@ -901,20 +1069,25 @@ export function AdminTimetable() {
               <PageLoader label="Fetching timetable" size={110} className="min-h-[260px] py-6" />
             ) : daySlots.length > 0 ? (
               <ul>
-                {daySlots.map((slot) => (
-                  <SlotRow
-                    key={slot.id}
-                    slot={slot}
-                    editing={editingId === slot.id}
-                    conflictMessage={conflicts[slot.id] ?? ''}
-                    catalog={catalog}
-                    saving={busy}
-                    onEdit={() => setEditingId(slot.id)}
-                    onConfirm={() => void handleConfirmSlot(slot)}
-                    onDelete={() => void handleDeleteSlot(slot)}
-                    onChange={(patch) => updateSlot(slot.id, patch)}
-                  />
-                ))}
+                {daySlots.map((slot) => {
+                  const current = timetable.find((s) => s.id === slot.id) ?? slot
+                  return (
+                    <SlotRow
+                      key={slot.id}
+                      slot={current}
+                      editing={editingId === slot.id}
+                      conflictMessage={conflicts[slot.id] ?? ''}
+                      catalog={catalog}
+                      saving={pendingIds.has(slot.id)}
+                      availability={availability[slot.id]}
+                      availabilityLoading={!!availabilityLoading[slot.id]}
+                      onEdit={() => setEditingId(slot.id)}
+                      onConfirm={() => void handleConfirmSlot(current)}
+                      onDelete={() => void handleDeleteSlot(current)}
+                      onChange={(patch) => updateSlot(slot.id, patch)}
+                    />
+                  )
+                })}
               </ul>
             ) : (
               <div className="flex flex-col items-center gap-3 py-12 text-center">

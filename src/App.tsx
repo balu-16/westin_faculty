@@ -38,6 +38,7 @@ const AdminNotificationsSend = lazy(() => import('./pages/admin/AdminNotificatio
 const AdminNotificationsTemplates = lazy(() => import('./pages/admin/AdminNotificationsTemplates').then((m) => ({ default: m.AdminNotificationsTemplates })))
 const AdminNotificationsHistory = lazy(() => import('./pages/admin/AdminNotificationsHistory').then((m) => ({ default: m.AdminNotificationsHistory })))
 const AdminNotificationsSettings = lazy(() => import('./pages/admin/AdminNotificationsSettings').then((m) => ({ default: m.AdminNotificationsSettings })))
+const OtpDemo = lazy(() => import('./pages/OtpDemo').then((m) => ({ default: m.OtpDemo })))
 
 /** Walker fallback for admin routes — the chunk load shows the section's own
  *  dedicated label, so it never fights the page's data-loading state. */
@@ -186,6 +187,15 @@ function AppRoutes() {
         <Route path="notifications" element={<Suspense fallback={<AdminPageFallback label="Loading notifications" />}><AdminNotificationsSend /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<AdminPageFallback label="Loading settings" />}><AdminSettings /></Suspense>} />
       </Route>
+
+      <Route
+        path="/otp-demo"
+        element={
+          <Suspense fallback={<AdminPageFallback label="Loading OTP demo" />}>
+            <OtpDemo />
+          </Suspense>
+        }
+      />
 
       <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
