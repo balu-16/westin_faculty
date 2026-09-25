@@ -258,8 +258,8 @@ export function LoginScreen({
   }
 
   return (
-    <div className="min-h-screen bg-[#f7fafc] px-2 py-3 sm:px-4 sm:py-5">
-      <header className="mx-auto flex w-full max-w-[1280px] items-center justify-between px-3 py-2 sm:px-6">
+    <div className="login-page-shell">
+      <header className="login-page-header mx-auto flex w-full max-w-[1280px] items-center justify-between px-3 py-2 sm:px-6">
         <div className="flex items-center gap-3">
           <picture>
             <source srcSet={westinLogoAvif} type="image/avif" />
@@ -283,7 +283,7 @@ export function LoginScreen({
         </span>
       </header>
 
-      <main className="mx-auto mt-3 w-full max-w-[1280px]">
+      <main className="login-page-main">
         <LoginPullScene>
           <div className="login-card">
             <div className="mb-7 flex items-center justify-between gap-3">
@@ -442,12 +442,12 @@ export function LoginScreen({
           </div>
         </LoginPullScene>
 
-        <div className="mx-auto mt-4 w-full max-w-[470px]">
+        <div className="login-page-install mx-auto w-full max-w-[470px]">
           <InstallPwaBanner />
         </div>
       </main>
 
-      <footer className="mx-auto flex w-full max-w-[1264px] justify-center px-3 py-6 text-center text-xs text-ink-soft sm:justify-between sm:px-6">
+      <footer className="login-page-footer mx-auto flex w-full max-w-[1264px] justify-center px-3 py-6 text-center text-xs text-ink-soft sm:justify-between sm:px-6">
         <span className="font-semibold text-[#536b7e]">Learn. Grow. Belong.</span>
         <span className="hidden sm:inline">Westin College · Staff portal</span>
         <span>Need help? Contact the college IT desk.</span>

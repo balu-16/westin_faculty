@@ -288,6 +288,52 @@
   padding-left: 8px;
 }
 
+/* The login is one continuous sky-blue surface. Header, scene, install help,
+ * and footer share the same page so no supporting details sit on a separate
+ * white strip outside the main composition. */
+.login-page-shell {
+  --login-surface-blue: #b1e0fb;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: clip;
+  background:
+    radial-gradient(ellipse at 12% 4%, #effbff 0, transparent 62%),
+    linear-gradient(130deg, #daf1ff 10%, var(--login-surface-blue) 67%, #9cd4f6);
+}
+
+.login-page-shell .login-page-header,
+.login-page-shell .login-page-footer {
+  position: relative;
+  z-index: 10;
+  flex: 0 0 auto;
+  max-width: none;
+}
+
+.login-page-shell .login-page-main {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  flex: 1 0 auto;
+}
+
+.login-page-shell .login-pull-scene {
+  width: 100%;
+  max-width: none;
+  min-height: max(560px, calc(100dvh - 132px));
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.login-page-shell .login-page-install {
+  padding: 12px 16px 20px;
+}
+
+.login-page-shell .login-page-footer {
+  color: #416882;
+}
+
 @container (min-width: 1450px) {
   .login-pull-scene {
     min-height: 726px;
