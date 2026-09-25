@@ -286,14 +286,14 @@ export function LoginScreen({
       <main className="login-page-main">
         <LoginPullScene>
           <div className="login-card">
-            <div className="mb-7 flex items-center justify-between gap-3">
+            <div className="login-card-topline mb-7 flex items-center justify-between gap-3">
               <span className="rounded-full border border-[#e0ece6] bg-[#eef5f4] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#32637c]">
                 {portalName}
               </span>
               <span className="text-[10px] font-medium text-[#6b7f8d]">OTP protected</span>
             </div>
 
-            <div className="mb-8 flex flex-col items-center text-center">
+            <div className="login-card-intro mb-8 flex flex-col items-center text-center">
               <picture>
                 <source srcSet={westinLogoAvif} type="image/avif" />
                 <img
@@ -355,7 +355,7 @@ export function LoginScreen({
                   </Button>
                 </form>
               ) : otpStatus !== 'idle' ? (
-                <div className="py-2">
+                <div className="login-otp-feedback py-2">
                   <OtpAnimation
                     digits={digits}
                     phone={maskIdentifier(identifier.trim())}

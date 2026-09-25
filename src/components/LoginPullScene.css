@@ -288,292 +288,414 @@
   padding-left: 8px;
 }
 
-/* The login is one continuous sky-blue surface. Header, scene, install help,
- * and footer share the same page so no supporting details sit on a separate
- * white strip outside the main composition. */
+/* One viewport-sized composition. Intrinsic form height may expand the page
+ * when zoom, a virtual keyboard or an install guide needs more space; never
+ * hide overflow or scale down the controls to force a fit.
+ * Keep this production stylesheet in sync in the student and staff apps. */
 .login-page-shell {
-  --login-surface-blue: #b1e0fb;
+  min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: clip;
   background:
     radial-gradient(ellipse at 12% 4%, #effbff 0, transparent 62%),
-    linear-gradient(130deg, #daf1ff 10%, var(--login-surface-blue) 67%, #9cd4f6);
+    linear-gradient(130deg, #daf1ff 10%, #b1e0fb 67%, #9cd4f6);
 }
-
 .login-page-shell .login-page-header,
 .login-page-shell .login-page-footer {
   position: relative;
   z-index: 10;
   flex: 0 0 auto;
-  max-width: none;
+  max-width: 1360px;
+  padding-inline: 40px;
 }
-
 .login-page-shell .login-page-main {
   width: 100%;
-  max-width: none;
-  margin: 0;
-  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
-
 .login-page-shell .login-pull-scene {
+  flex: 1;
   width: 100%;
-  max-width: none;
-  min-height: max(560px, calc(100dvh - 132px));
-  margin: 0;
+  max-width: 1360px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: clamp(20px, 3dvh, 32px) 40px;
+  grid-template-columns: minmax(0, 1fr) 416px;
+  gap: 40px;
   border: 0;
   border-radius: 0;
+  background: transparent;
 }
-
-.login-page-shell .login-page-install {
-  padding: 12px 16px 20px;
+.login-page-shell .stage-story {
+  min-height: min(540px, calc(100dvh - 180px));
 }
-
+.login-page-shell .story-copy {
+  padding-top: 12px;
+}
+.login-page-shell .story-copy h1 {
+  font-size: clamp(42px, 4.4vw, 62px);
+}
+.login-page-shell .campus-sketch {
+  left: -12px;
+  bottom: 40px;
+  width: min(510px, calc(100% + 12px));
+}
+.login-page-shell .pull-character {
+  right: -26px;
+  bottom: 8px;
+  width: clamp(190px, 26dvh, 248px);
+}
+.login-page-shell .notebook-note {
+  bottom: 0;
+}
+.login-page-shell .stage-bottom-note {
+  left: 40px;
+  bottom: 9px;
+}
+.login-page-shell .skip-animation {
+  right: 40px;
+  bottom: 4px;
+}
+.login-page-shell .login-card {
+  min-height: min(540px, calc(100dvh - 190px));
+  padding: 26px 28px;
+}
+.login-page-shell .login-card-topline {
+  margin-bottom: 18px;
+}
+.login-page-shell .login-card-intro {
+  margin-bottom: 22px;
+}
+.login-page-shell .login-card-intro img {
+  height: 52px;
+  width: auto;
+}
+.login-page-shell .login-card-intro h2 {
+  margin-top: 12px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+.login-page-shell .login-card-intro p {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.login-page-shell .login-card label {
+  font-size: 13px;
+}
+.login-page-shell .login-card button[type="submit"] {
+  margin-top: 20px;
+  min-height: 46px;
+  padding-block: 10px;
+}
+.login-page-shell .login-card-help {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.login-page-shell .login-card [role="alert"] {
+  margin-top: 12px;
+  padding: 8px 12px;
+}
+.login-page-shell .login-otp-feedback .ota-root {
+  padding: 0;
+}
+.login-page-shell .login-page-install:empty {
+  display: none;
+}
+.login-page-shell .login-page-install:not(:empty) {
+  padding: 8px 16px 12px;
+}
 .login-page-shell .login-page-footer {
+  padding-block: 12px;
+  gap: 12px;
   color: #416882;
 }
 
-@container (min-width: 1450px) {
-  .login-pull-scene {
-    min-height: 726px;
-    grid-template-columns: minmax(0, 1fr) 432px;
-    gap: 72px;
-    padding: 56px 64px;
-  }
-
-  .login-pull-scene .stage-story {
-    min-height: 600px;
-  }
-
-  .login-pull-scene .pull-character {
-    right: -48px;
-    width: 268px;
-  }
-
-  .login-pull-scene .login-card {
-    padding: 34px 36px 24px;
-  }
-}
-
-@container (max-width: 1150px) {
-  .login-pull-scene {
-    width: calc(100% - 32px);
-    min-height: 658px;
-    grid-template-columns: minmax(0, 1fr) 384px;
+/* These are viewport queries: the scene cannot query its own container size
+ * to change its columns. Descendant-only container rules left mobile in the
+ * desktop grid in the old stylesheet. */
+@media (min-width: 901px) and (max-width: 1150px) {
+  .login-page-shell .login-pull-scene {
+    grid-template-columns: minmax(0, 1fr) 370px;
     gap: 30px;
-    padding: 34px 32px 42px;
+    padding-inline: 32px;
   }
-
-  .login-pull-scene .story-copy h1 {
-    font-size: 50px;
+  .login-page-shell .login-page-header,
+  .login-page-shell .login-page-footer {
+    padding-inline: 32px;
   }
-
-  .login-pull-scene .eyebrow {
-    font-size: 8px;
-    letter-spacing: 1.1px;
+  .login-page-shell .story-copy h1 {
+    font-size: 44px;
   }
-
-  .login-pull-scene .story-copy > p {
-    font-size: 13px;
+  .login-page-shell .pull-character {
+    right: -23px;
+    width: 204px;
   }
-
-  .login-pull-scene .pull-character {
-    right: -29px;
-    width: 218px;
+  .login-page-shell .campus-sketch {
+    width: min(420px, 100%);
   }
-
-  .login-pull-scene .campus-sketch {
-    width: min(490px, calc(100% + 32px));
-  }
-
-  .login-pull-scene .login-card {
-    padding: 27px 28px 20px;
-  }
-
-  .login-pull-scene .stage-bottom-note {
-    left: 32px;
+  .login-page-shell .login-card {
+    padding-inline: 24px;
   }
 }
-
-@container (max-width: 900px) {
-  .login-pull-scene {
-    width: calc(100% - 24px);
-    max-width: 620px;
-    min-height: 0;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-    padding: 30px;
+@media (max-height: 760px) {
+  .login-page-shell .login-page-header {
+    padding-block: 6px;
   }
-
-  .login-pull-scene .stage-story {
-    width: 100%;
-    max-width: 470px;
-    height: 420px;
-    min-height: 0;
-    justify-self: center;
+  .login-page-shell .login-page-header img {
+    height: 40px;
+    width: auto;
   }
-
-  .login-pull-scene .story-copy {
-    padding: 5px 0 0;
+  .login-page-shell .login-pull-scene {
+    padding-block: 16px;
   }
-
-  .login-pull-scene .story-copy h1 {
-    margin: 20px 0 16px;
-    font-size: 45px;
+  .login-page-shell .stage-story {
+    min-height: min(400px, calc(100dvh - 140px));
   }
-
-  .login-pull-scene .story-copy > p {
-    font-size: 12px;
+  .login-page-shell .story-copy {
+    padding-top: 0;
   }
-
-  .login-pull-scene .story-note,
-  .login-pull-scene .notebook-note,
-  .login-pull-scene .stage-bottom-note {
+  .login-page-shell .story-copy h1 {
+    font-size: clamp(40px, 4.2vw, 54px);
+    margin-block: 16px;
+  }
+  .login-page-shell .story-note {
+    margin-top: 12px;
+  }
+  .login-page-shell .campus-sketch {
+    width: min(390px, 72%);
+    bottom: 25px;
+  }
+  .login-page-shell .pull-character {
+    width: clamp(160px, 28dvh, 210px);
+    bottom: 0;
+  }
+  .login-page-shell .notebook-note {
+    padding-block: 4px;
+    font-size: 9px;
+  }
+  .login-page-shell .stage-bottom-note {
     display: none;
   }
-
-  .login-pull-scene .pull-character {
-    right: -6px;
-    bottom: -18px;
-    width: 192px;
+  .login-page-shell .login-card {
+    min-height: 0;
+    padding: 20px 26px;
   }
-
-  .login-pull-scene .campus-sketch {
-    bottom: -12px;
-    left: -16px;
-    width: calc(100% + 32px);
-    opacity: 0.5;
+  .login-page-shell .login-card-topline {
+    margin-bottom: 12px;
   }
-
-  .login-pull-scene .ground-line {
-    right: 0;
-    bottom: -3px;
-    width: 180px;
+  .login-page-shell .login-card-intro {
+    margin-bottom: 16px;
   }
-
-  .login-pull-scene .pull-card {
+  .login-page-shell .login-card-intro img {
+    height: 40px;
+  }
+  .login-page-shell .login-card-intro h2 {
+    margin-top: 8px;
+    font-size: 22px;
+  }
+  .login-page-shell .login-card-intro p {
+    line-height: 1.45;
+  }
+  .login-page-shell .login-card input {
+    height: 44px;
+    min-height: 44px;
+  }
+  .login-page-shell .login-card-fields > :not(:last-child) {
+    margin-bottom: 12px;
+  }
+  .login-page-shell .login-card button[type="submit"] {
+    margin-top: 16px;
+    min-height: 44px;
+    padding-block: 8px;
+  }
+  .login-page-shell .login-card-help {
+    margin-top: 12px;
+    font-size: 12px;
+  }
+  .login-page-shell .login-page-footer {
+    padding-block: 8px;
+    font-size: 11px;
+  }
+}
+@media (max-width: 900px) {
+  .login-page-shell .login-pull-scene {
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    max-width: 500px;
+    padding: 12px 24px 16px;
+  }
+  .login-page-shell .login-page-main {
+    justify-content: center;
+  }
+  .login-page-shell .stage-story {
     width: 100%;
-    max-width: 470px;
+    min-height: 0;
+    height: clamp(140px, 20dvh, 180px);
+  }
+  .login-page-shell .story-copy {
+    padding: 0;
+  }
+  .login-page-shell .story-copy h1 {
+    margin: 10px 0 0;
+    font-size: clamp(27px, 4.8vw, 34px);
+    letter-spacing: -1.4px;
+    line-height: 1.08;
+  }
+  .login-page-shell .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .login-page-shell .story-copy > p,
+  .login-page-shell .story-note,
+  .login-page-shell .notebook-note,
+  .login-page-shell .stage-bottom-note,
+  .login-page-shell .ground-line {
+    display: none;
+  }
+  .login-page-shell .campus-sketch {
+    left: 0;
+    bottom: -2px;
+    width: 168px;
+    opacity: 0.45;
+  }
+  .login-page-shell .pull-character {
+    right: 4px;
+    bottom: -8px;
+    width: clamp(92px, 15dvh, 120px);
+  }
+  .login-page-shell .pull-card {
+    width: 100%;
+    max-width: 452px;
     justify-self: center;
   }
-
-  .login-pull-scene .login-card {
-    min-height: 0;
-    padding: 30px 32px 23px;
-  }
-
-  .login-pull-scene .pull-card > .card-rope-anchor {
+  .login-page-shell .pull-card > .card-rope-anchor {
     top: -7px;
-    right: 31px;
+    right: 26px;
     left: auto;
     width: 22px;
     height: 14px;
   }
-
-  .login-pull-scene .skip-animation {
-    right: 30px;
-    bottom: 5px;
-    padding: 5px 9px;
+  .login-page-shell .login-card {
+    min-height: 0;
+    padding: 22px 26px;
+    border-radius: 22px;
+  }
+  .login-page-shell .login-card-intro img {
+    height: 40px;
+  }
+  .login-page-shell .login-card-topline {
+    margin-bottom: 12px;
+  }
+  .login-page-shell .login-card-intro {
+    margin-bottom: 16px;
+  }
+  .login-page-shell .login-card-intro h2 {
+    margin-top: 8px;
+    font-size: 22px;
+  }
+  .login-page-shell .login-card-intro p {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .login-page-shell .login-card-help {
+    margin-top: 14px;
+    font-size: 12px;
+  }
+  .login-page-shell .skip-animation {
+    top: 12px;
+    bottom: auto;
+    right: 24px;
+    padding: 6px;
     font-size: 9px;
   }
-}
-
-@container (max-width: 560px) {
-  .login-pull-scene {
-    width: calc(100% - 12px);
-    padding: 22px 16px;
-    border-radius: 24px;
-    gap: 17px;
+  .login-page-shell .skip-animation span {
+    display: none;
   }
-
-  .login-pull-scene .stage-story {
-    height: clamp(330px, calc(330px + (100cqi - 390px) * 0.38), 395px);
+  .login-page-shell .login-page-header,
+  .login-page-shell .login-page-footer {
+    padding-inline: 24px;
   }
-
-  .login-pull-scene .story-copy {
-    padding: 3px 3px 0;
-  }
-
-  .login-pull-scene .eyebrow {
-    gap: 7px;
-    font-size: 7px;
-    letter-spacing: 1px;
-  }
-
-  .login-pull-scene .eyebrow > span {
-    width: 4px;
-    height: 4px;
-  }
-
-  .login-pull-scene .story-copy h1 {
-    margin: 18px 0 14px;
-    font-size: 38px;
-    letter-spacing: -1.8px;
-    line-height: 1.09;
-  }
-
-  .login-pull-scene .story-copy h1 span::after {
-    bottom: -3px;
-    height: 5px;
-    border-width: 2px;
-  }
-
-  .login-pull-scene .story-copy > p {
-    font-size: 11px;
-    line-height: 1.8;
-  }
-
-  .login-pull-scene .pull-character {
-    right: 0;
-    bottom: -19px;
-    width: 144px;
-  }
-
-  .login-pull-scene .campus-sketch {
-    right: auto;
-    bottom: -8px;
-    left: -8px;
-    width: calc(100% + 16px);
-    opacity: 0.57;
-  }
-
-  .login-pull-scene .ground-line {
-    right: 0;
-    bottom: -5px;
-    width: 160px;
-  }
-
-  .login-pull-scene .login-card {
-    padding: 25px 22px 20px;
-    border-radius: 19px;
-  }
-
-  .login-pull-scene .skip-animation {
-    right: 23px;
-    bottom: 2px;
-    border: 0;
-    background: transparent;
-    font-size: 8px;
-  }
-
-  .login-pull-scene .pull-card > .card-rope-anchor {
-    right: 14px;
+  .login-page-shell .login-page-footer {
+    flex-wrap: wrap;
+    font-size: 10px;
+    gap: 4px 12px;
+    padding-block: 8px;
   }
 }
-
-@container (max-width: 370px) {
-  .login-pull-scene .story-copy h1 {
-    font-size: 35px;
+@media (max-width: 900px) and (max-height: 760px) {
+  .login-page-shell .login-pull-scene {
+    gap: 12px;
+    padding-block: 6px 10px;
   }
-
-  .login-pull-scene .pull-character {
-    right: -7px;
-    width: 120px;
+  .login-page-shell .stage-story {
+    height: 100px;
   }
-
-  .login-pull-scene .login-card {
-    padding: 23px 18px 19px;
+  .login-page-shell .campus-sketch {
+    left: auto;
+    right: 58px;
+    bottom: -4px;
+    width: 125px;
+    opacity: 0.24;
+  }
+  .login-page-shell .pull-character {
+    right: 0;
+    width: 78px;
+  }
+  .login-page-shell .story-copy h1 {
+    font-size: 26px;
+  }
+  .login-page-shell .login-card {
+    padding: 16px 22px;
+  }
+  .login-page-shell .login-card-intro img {
+    height: 32px;
+  }
+  .login-page-shell .login-card-intro h2 {
+    font-size: 21px;
+  }
+  .login-page-shell .login-card-intro p {
+    margin-top: 4px;
+    font-size: 12px;
+  }
+  .login-page-shell .login-card-topline,
+  .login-page-shell .login-card-intro {
+    margin-bottom: 10px;
+  }
+  .login-page-shell .login-card label {
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .login-page-shell .login-card-help {
+    margin-top: 10px;
+  }
+  .login-page-shell .login-card button[type="submit"] {
+    margin-top: 12px;
+  }
+}
+@media (max-width: 374px) {
+  .login-page-shell .login-pull-scene {
+    padding-inline: 16px;
+  }
+  .login-page-shell .login-card {
+    padding-inline: 18px;
+  }
+  .login-page-shell .story-copy h1 {
+    font-size: 25px;
+  }
+  .login-page-shell .eyebrow {
+    font-size: 6px;
+  }
+  .login-page-shell .login-page-header,
+  .login-page-shell .login-page-footer {
+    padding-inline: 16px;
   }
 }
 
