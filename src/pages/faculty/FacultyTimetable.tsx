@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { CalendarDays, Users } from 'lucide-react'
 import { Header } from '../../components/Header'
@@ -8,7 +8,7 @@ import { PageLoader } from '../../components/Loading'
 import { ErrorState } from '../../components/ErrorState'
 import { useApi } from '../../lib/api'
 import { mapWeek, type ApiWeekDay } from '../../lib/mappers'
-import { cx } from '../../utils'
+import { cx, kolkataTodayIndex } from '../../utils'
 import type { PortalLayoutContext } from '../../layouts/PortalShell'
 
 export function FacultyTimetable() {
@@ -19,9 +19,23 @@ export function FacultyTimetable() {
   )
   const week = data ? mapWeek(data) : []
   const initialLoading = loading && !data
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(() => kolkataTodayIndex())
   const trackRef = useRef<HTMLDivElement>(null)
   const scrollTimer = useRef<number | undefined>(undefined)
+
+  // Refresh on tab focus/visibility so upcoming → ongoing flips without reload.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') reload()
+    }
+    const onFocus = () => reload()
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [reload])
 
   const schedule = week[activeIndex] ?? { day: 'Monday', classes: [] }
 
@@ -46,6 +60,20 @@ export function FacultyTimetable() {
     <div className="space-y-6">
       <Header title="Timetable" subtitle="Your weekly teaching schedule." onMenuClick={openMenu} />
 
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            const today = kolkataTodayIndex()
+            setActiveIndex(today)
+            goToDay(today)
+            reload()
+          }}
+          className="rounded-full border border-line bg-white px-3.5 py-1.5 text-xs font-bold text-primary-dark shadow-sm transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          Today
+        </button>
+      </div>
       {/* Day tabs */}
       <div
         role="tablist"

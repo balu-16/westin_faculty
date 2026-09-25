@@ -95,6 +95,8 @@ interface RosterPayload {
   sessionExists: boolean
   editable: boolean
   editableUntil: string | null
+  markingOpen?: boolean
+  availableFrom?: string | null
   marks: Record<string, AttendanceMark>
   students: Array<{ id: string; studentId: string; rollNo: string; name: string }>
 }
@@ -158,6 +160,12 @@ export function FacultyAttendance() {
   >('faculty-portal.session', historyPath, [sectionId, periodId])
 
   const isEditable = rosterData ? rosterData.editable !== false : true
+  // Time-window rule (no timetable link): marking allowed only in/after the
+  // period's slot start, same day before 11:59 PM IST.
+  const markingOpen = rosterData ? rosterData.markingOpen !== false : true
+  const availableFrom = rosterData?.availableFrom ?? null
+  const canMark = isEditable && markingOpen
+  const tooEarly = isEditable && !markingOpen
 
   const roster: SectionStudent[] = useMemo(
     () =>
@@ -194,14 +202,14 @@ export function FacultyAttendance() {
 
   const setMark = useCallback(
     (id: string, mark: AttendanceMark) => {
-      if (!isEditable) return
+      if (!canMark) return
       setMarks((prev) => ({ ...prev, [id]: mark }))
     },
-    [isEditable],
+    [canMark],
   )
 
   const markAllPresent = () => {
-    if (!isEditable) return
+    if (!canMark) return
     const all: Record<string, AttendanceMark> = {}
     roster.forEach((student) => {
       all[student.id] = 'present'
@@ -255,7 +263,14 @@ export function FacultyAttendance() {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
-        const payload = err.payload as { code?: string; message?: string } | null
+        const payload = err.payload as { code?: string; message?: string; availableFrom?: string } | null
+        if (payload?.code === 'ATTENDANCE_TOO_EARLY') {
+          const msg = payload.message ?? `This hour opens at ${payload?.availableFrom ?? availableFrom ?? 'slot start'} — marking is allowed only in that slot or after, same day before 11:59 PM.`
+          setCutoffError(msg)
+          toast.danger(msg)
+          reloadRoster()
+          return
+        }
         if (payload?.code === 'ATTENDANCE_NOT_EDITABLE') {
           const msg = 'Attendance can be marked or edited only on the class date before midnight IST.'
           setCutoffError(msg)
@@ -445,7 +460,17 @@ export function FacultyAttendance() {
                   role="alert"
                   className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm font-medium text-amber-800 sm:px-6"
                 >
-                  Attendance for this date is closed — it can only be edited on the class date before midnight IST.
+                  Attendance for this date is closed — it can only be marked on the class date before midnight IST.
+                </div>
+              ) : null}
+              {/* Too-early banner: slot hasn't started yet today */}
+              {rosterData && tooEarly ? (
+                <div
+                  role="alert"
+                  className="border-b border-sky-200 bg-sky-50 px-5 py-3 text-sm font-medium text-sky-900 sm:px-6"
+                >
+                  {periodLabel(periodId)} opens at {availableFrom ?? 'slot start'} — marking is allowed only in that
+                  time slot or after, any time before 11:59 PM today.
                 </div>
               ) : null}
               {/* Roster header */}
@@ -456,6 +481,7 @@ export function FacultyAttendance() {
                     {rosterLoading ? 'Loading roster…' : `${roster.length} students`} • {periodLabel(periodId)}
                     {rosterData?.sessionExists ? ' • already marked (editing)' : ''}
                     {rosterData && !isEditable ? ' • closed' : ''}
+                    {rosterData && tooEarly ? ` • opens ${availableFrom ?? ''}` : ''}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -488,7 +514,7 @@ export function FacultyAttendance() {
                         key={student.id}
                         student={student}
                         mark={marks[student.id] ?? 'present'}
-                        disabled={!isEditable}
+                        disabled={!canMark}
                         onSet={setMark}
                       />
                     ))}
@@ -496,11 +522,11 @@ export function FacultyAttendance() {
 
                   {/* Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-4 sm:px-6">
-                    <Button variant="secondary" size="sm" onClick={markAllPresent} disabled={!isEditable}>
+                    <Button variant="secondary" size="sm" onClick={markAllPresent} disabled={!canMark}>
                       <CheckCircle2 size={15} aria-hidden="true" />
                       Mark All Present
                     </Button>
-                    <Button onClick={handleSubmit} loading={submitting} disabled={!isEditable}>
+                    <Button onClick={handleSubmit} loading={submitting} disabled={!canMark}>
                       <ClipboardCheck size={16} aria-hidden="true" />
                       Submit Attendance
                     </Button>

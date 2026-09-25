@@ -24,6 +24,7 @@ interface StudentListItem {
   name: string
   studentId: string
   department: string
+  section?: string
   year: string
 }
 
@@ -83,7 +84,11 @@ export function AdminNotificationsSend() {
       return (facultyList ?? []).map((f) => ({ id: f.id, name: f.name, sub: f.department }))
     }
     if (targetType === 'selected_students') {
-      return (studentList ?? []).map((s) => ({ id: s.id, name: s.name, sub: `${s.studentId} • ${s.department} • ${s.year}` }))
+      return (studentList ?? []).map((s) => ({
+        id: s.id,
+        name: s.name,
+        sub: s.section ? `${s.studentId} • ${s.department} • ${s.section} • ${s.year}` : `${s.studentId} • ${s.department} • ${s.year}`,
+      }))
     }
     return []
   }, [targetType, facultyList, studentList])
@@ -291,7 +296,7 @@ export function AdminNotificationsSend() {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={targetType === 'selected_faculty' ? 'Search by name or department…' : 'Search by name, ID, department or year…'}
+                  placeholder={targetType === 'selected_faculty' ? 'Search by name or department…' : 'Search by name, ID, department, section or year…'}
                   className="h-9 w-full rounded-xl border border-line bg-white pl-9 pr-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-primary focus:outline-none"
                 />
               </div>

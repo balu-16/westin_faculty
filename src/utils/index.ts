@@ -143,6 +143,18 @@ export const periodLabel = (id: string) => periods.find((p) => p.id === id)?.lab
 
 export const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+/** IST weekday index matching the timetable API (Mon 0..Sat 5). Sunday → 0 (Monday). */
+export function kolkataTodayIndex(date = new Date()): number {
+  try {
+    const weekday = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(date)
+    const map: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 0 }
+    return map[weekday] ?? 0
+  } catch {
+    const d = (date.getDay() + 6) % 7
+    return d > 5 ? 0 : d
+  }
+}
+
 /** Fixed teaching slots (12h display) — admins cannot edit times, only pick a slot. */
 export const canonicalPeriods: Array<{ start: string; end: string }> = [
   { start: '09:00 AM', end: '10:00 AM' },

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent, type 
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Mail } from 'lucide-react'
 import { Button } from '../../components/Button'
-import { FallingIcons, HotelScene } from '../../components/HotelScene'
+import { LoginPullScene } from '../../components/LoginPullScene'
 import { OtpAnimation } from '../../components/OtpAnimation'
 import { InstallPwaBanner } from '../../components/InstallPwaBanner'
 import westinLogoAvif from '../../assets/images/westin-logo.avif'
@@ -22,7 +22,6 @@ if (typeof document !== 'undefined' && !document.querySelector('link[data-login-
   link.dataset.loginLogo = ''
   document.head.appendChild(link)
 }
-
 const OTP_LENGTH = 6
 const RESEND_SECONDS = 30
 
@@ -39,11 +38,7 @@ function maskIdentifier(value: string): string {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
-type PortalRole = 'faculty' | 'admin'
-
 interface LoginScreenProps {
-  /** Portal selected by the current route; the tabs navigate between portals. */
-  activePortal: PortalRole
   /** Small label above the heading, e.g. "Faculty Portal" */
   portalName: string
   /** Card heading, e.g. "Faculty Login" */
@@ -66,7 +61,6 @@ interface LoginScreenProps {
  * Step 1 asks for the ID, Step 2 verifies the 6-digit code emailed by the API.
  */
 export function LoginScreen({
-  activePortal,
   portalName,
   heading,
   welcomeMessage,
@@ -264,73 +258,39 @@ export function LoginScreen({
   }
 
   return (
-    <div className="flex min-h-screen bg-page">
-      {/* Left — Westin College hotel & business scene */}
-      <div className="relative hidden w-[46%] flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#5FB7F5] via-[#3BA7F2] to-[#168BE5] p-12 lg:flex">
-        <div
-          aria-hidden="true"
-          className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-2xl"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-white/10 blur-3xl"
-        />
-        {/* Very subtle slow-moving shimmer across the gradient */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 animate-shimmer bg-[linear-gradient(115deg,rgba(255,255,255,0)_30%,rgba(255,255,255,0.09)_50%,rgba(255,255,255,0)_70%)] bg-[length:220%_100%]"
-        />
-
-        {/* Ambient falling hospitality/business icons (behind text and scene) */}
-        <FallingIcons />
-
-        <div className="relative z-10 w-full">
-          <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-            <h2 className="text-center text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Welcome Back!
-            </h2>
-            <p className="mx-auto mt-3 max-w-md text-center text-base leading-relaxed text-white/85 sm:text-lg">
-              {welcomeMessage}
+    <div className="min-h-screen bg-[#f7fafc] px-2 py-3 sm:px-4 sm:py-5">
+      <header className="mx-auto flex w-full max-w-[1280px] items-center justify-between px-3 py-2 sm:px-6">
+        <div className="flex items-center gap-3">
+          <picture>
+            <source srcSet={westinLogoAvif} type="image/avif" />
+            <img
+              src={westinLogoPng}
+              width={575}
+              height={294}
+              alt="Westin College"
+              className="h-10 w-auto object-contain sm:h-12"
+            />
+          </picture>
+          <div className="hidden border-l border-[#d4e1e9] pl-3 sm:block">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#325d77]">
+              Staff access
             </p>
-          </div>
-          <div className="mt-10 animate-fade-in-up" style={{ animationDelay: '250ms' }}>
-            <HotelScene />
+            <p className="text-xs text-[#5d6f7e]">A clear path into the Westin portal</p>
           </div>
         </div>
-      </div>
+        <span className="rounded-full border border-[#cce7f7] bg-white/70 px-3 py-1.5 text-[11px] font-semibold text-[#32637c]">
+          {portalName}
+        </span>
+      </header>
 
-      {/* Right — login card */}
-      <div className="relative flex flex-1 items-center justify-center px-4 py-10 sm:px-8">
-        <div
-          aria-hidden="true"
-          className="absolute right-0 top-0 h-56 w-56 rounded-full bg-primary-light blur-3xl lg:hidden"
-        />
-        <div className="relative w-full max-w-md animate-fade-in-up">
-          <div className="rounded-[20px] border border-line bg-white p-5 shadow-[0_8px_30px_rgba(20,33,61,0.06)] sm:p-9">
-            <div
-              className="mb-7 grid grid-cols-2 rounded-xl bg-primary-lighter/70 p-1"
-              role="tablist"
-              aria-label="Choose portal"
-            >
-              {(['faculty', 'admin'] as const).map((portal) => {
-                const selected = activePortal === portal
-                return (
-                  <button
-                    key={portal}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => navigate(`/${portal}/login`)}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition-colors ${
-                      selected
-                        ? 'bg-white text-primary-dark shadow-sm'
-                        : 'text-ink-soft hover:text-ink'
-                    }`}
-                  >
-                    {portal}
-                  </button>
-                )
-              })}
+      <main className="mx-auto mt-3 w-full max-w-[1280px]">
+        <LoginPullScene>
+          <div className="login-card">
+            <div className="mb-7 flex items-center justify-between gap-3">
+              <span className="rounded-full border border-[#e0ece6] bg-[#eef5f4] px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#32637c]">
+                {portalName}
+              </span>
+              <span className="text-[10px] font-medium text-[#6b7f8d]">OTP protected</span>
             </div>
 
             <div className="mb-8 flex flex-col items-center text-center">
@@ -341,24 +301,24 @@ export function LoginScreen({
                   width={575}
                   height={294}
                   alt="Westin College — College Of Hotel Management, College Of Business Management, Junior College"
-                  className="h-16 w-auto object-contain sm:h-[72px]"
+                  className="h-14 w-auto object-contain sm:h-16"
                 />
               </picture>
-              <p className="mt-3 text-sm font-semibold text-ink-soft">{portalName}</p>
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink">
+              <h2 className="mt-4 text-2xl font-bold tracking-tight text-ink">
                 {step === 1 ? heading : 'Enter OTP'}
-              </h1>
+              </h2>
               {step === 1 ? (
-                <p className="mt-1.5 text-sm text-ink-soft">Enter your credentials to continue.</p>
+                <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-ink-soft">
+                  {welcomeMessage}
+                </p>
               ) : (
-                <p className="mt-1.5 text-sm text-ink-soft">
+                <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
                   We&apos;ve sent a 6-digit code to{' '}
                   <span className="font-semibold text-ink">{maskIdentifier(identifier.trim())}</span>
                 </p>
               )}
             </div>
 
-            {/* Step content — remounts with a gentle fade/slide on step change */}
             <div key={step} className="animate-fade-in-up">
               {step === 1 ? (
                 <form onSubmit={handleSendOtp} noValidate>
@@ -379,13 +339,13 @@ export function LoginScreen({
                         placeholder={idPlaceholder}
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        className="h-11 w-full rounded-xl border border-line bg-primary-lighter/60 pl-10 pr-4 text-sm text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:bg-white focus:outline-none"
+                        className="h-12 w-full rounded-xl border border-line bg-[#f9fbfc] pl-10 pr-4 text-base text-ink placeholder:text-ink-soft/60 transition-colors duration-200 focus:border-primary focus:bg-white focus:outline-none"
                       />
                     </div>
                   </div>
 
                   {error && (
-                    <p role="alert" className="mt-4 rounded-xl bg-danger/10 px-4 py-2.5 text-sm text-danger">
+                    <p role="alert" className="mt-4 rounded-xl border border-danger/20 bg-danger/10 px-4 py-2.5 text-sm text-danger">
                       {error}
                     </p>
                   )}
@@ -403,13 +363,15 @@ export function LoginScreen({
                     width={340}
                     variant={otpStatus === 'error' ? 'error' : 'success'}
                   />
-                  <p className={`mt-4 text-center text-sm font-medium ${otpStatus === 'error' ? 'text-danger' : 'text-ink-soft'}`}>
-                    {otpStatus === 'error' ? (error || 'Incorrect code. Please try again.') : 'Verified — redirecting…'}
+                  <p
+                    className={`mt-4 text-center text-sm font-medium ${otpStatus === 'error' ? 'text-danger' : 'text-ink-soft'}`}
+                    role="status"
+                  >
+                    {otpStatus === 'error' ? error || 'Incorrect code. Please try again.' : 'Verified — redirecting…'}
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleVerify} noValidate>
-                  {/* OTP boxes */}
                   <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5" role="group" aria-label="6-digit OTP">
                     {digits.map((digit, i) => (
                       <input
@@ -427,19 +389,16 @@ export function LoginScreen({
                         onKeyDown={(e) => handleKeyDown(i, e)}
                         onPaste={handlePaste}
                         onFocus={(e) => e.target.select()}
-                        className="h-12 w-full rounded-xl border border-line bg-primary-lighter/60 text-center text-lg font-semibold text-ink transition-colors duration-200 focus:border-primary focus:bg-white focus:outline-none"
+                        className="h-12 w-full rounded-xl border border-line bg-[#f9fbfc] text-center text-lg font-semibold text-ink transition-colors duration-200 focus:border-primary focus:bg-white focus:outline-none"
                       />
                     ))}
                   </div>
 
-                  {/* Countdown / resend */}
                   <div className="mt-4 text-center text-sm">
                     {secondsLeft > 0 ? (
                       <p className="text-ink-soft">
                         Resend OTP in{' '}
-                        <span className="font-semibold text-ink">
-                          00:{pad(secondsLeft)}
-                        </span>
+                        <span className="font-semibold text-ink">00:{pad(secondsLeft)}</span>
                       </p>
                     ) : (
                       <button
@@ -454,7 +413,7 @@ export function LoginScreen({
                   </div>
 
                   {error && (
-                    <p role="alert" className="mt-4 rounded-xl bg-danger/10 px-4 py-2.5 text-sm text-danger">
+                    <p role="alert" className="mt-4 rounded-xl border border-danger/20 bg-danger/10 px-4 py-2.5 text-sm text-danger">
                       {error}
                     </p>
                   )}
@@ -472,7 +431,7 @@ export function LoginScreen({
                   <button
                     type="button"
                     onClick={backToStepOne}
-                    className="mt-5 flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-primary-dark transition-colors duration-200 hover:text-primary"
+                    className="mt-5 flex min-h-10 w-full items-center justify-center gap-1.5 text-sm font-semibold text-primary-dark transition-colors duration-200 hover:text-primary"
                   >
                     <ArrowLeft size={14} aria-hidden="true" />
                     Change ID/Email
@@ -481,19 +440,18 @@ export function LoginScreen({
               )}
             </div>
           </div>
+        </LoginPullScene>
 
-          <div className="mt-5">
-            <InstallPwaBanner />
-          </div>
-
-          <p className="mt-6 text-center text-sm text-ink-soft">
-            Having trouble signing in?{' '}
-            <a href="mailto:balarakeshg@gmail.com" className="font-semibold text-primary-dark hover:text-primary">
-              Contact the college IT desk
-            </a>
-          </p>
+        <div className="mx-auto mt-4 w-full max-w-[470px]">
+          <InstallPwaBanner />
         </div>
-      </div>
+      </main>
+
+      <footer className="mx-auto flex w-full max-w-[1264px] justify-center px-3 py-6 text-center text-xs text-ink-soft sm:justify-between sm:px-6">
+        <span className="font-semibold text-[#536b7e]">Learn. Grow. Belong.</span>
+        <span className="hidden sm:inline">Westin College · Staff portal</span>
+        <span>Need help? Contact the college IT desk.</span>
+      </footer>
     </div>
   )
 }

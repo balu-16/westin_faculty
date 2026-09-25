@@ -38,6 +38,8 @@ const AdminNotificationsSend = lazy(() => import('./pages/admin/AdminNotificatio
 const AdminNotificationsTemplates = lazy(() => import('./pages/admin/AdminNotificationsTemplates').then((m) => ({ default: m.AdminNotificationsTemplates })))
 const AdminNotificationsHistory = lazy(() => import('./pages/admin/AdminNotificationsHistory').then((m) => ({ default: m.AdminNotificationsHistory })))
 const AdminNotificationsSettings = lazy(() => import('./pages/admin/AdminNotificationsSettings').then((m) => ({ default: m.AdminNotificationsSettings })))
+const AdminWebsite = lazy(() => import('./pages/admin/AdminWebsite').then((m) => ({ default: m.AdminWebsite })))
+const AdminEnquiries = lazy(() => import('./pages/admin/AdminEnquiries').then((m) => ({ default: m.AdminEnquiries })))
 const OtpDemo = lazy(() => import('./pages/OtpDemo').then((m) => ({ default: m.OtpDemo })))
 
 /** Walker fallback for admin routes — the chunk load shows the section's own
@@ -179,6 +181,8 @@ function AppRoutes() {
         <Route path="events" element={<Suspense fallback={<AdminPageFallback label="Fetching events" />}><AdminEvents /></Suspense>} />
         <Route path="materials" element={<Suspense fallback={<AdminPageFallback label="Fetching materials" />}><AdminMaterials /></Suspense>} />
         <Route path="reports" element={<Suspense fallback={<AdminPageFallback label="Fetching reports" />}><AdminReports /></Suspense>} />
+        <Route path="website" element={<Suspense fallback={<AdminPageFallback label="Loading website editor" />}><AdminWebsite /></Suspense>} />
+        <Route path="enquiries" element={<Suspense fallback={<AdminPageFallback label="Loading enquiry inbox" />}><AdminEnquiries /></Suspense>} />
         <Route path="notifications/send" element={<Suspense fallback={<AdminPageFallback label="Loading notifications" />}><AdminNotificationsSend /></Suspense>} />
         <Route path="notifications/templates" element={<Suspense fallback={<AdminPageFallback label="Fetching templates" />}><AdminNotificationsTemplates /></Suspense>} />
         <Route path="notifications/history" element={<Suspense fallback={<AdminPageFallback label="Fetching history" />}><AdminNotificationsHistory /></Suspense>} />

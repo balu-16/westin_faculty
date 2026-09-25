@@ -125,9 +125,10 @@ interface TextAreaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement>
   label: string
   required?: boolean
   error?: string
+  hint?: string
 }
 
-export function TextAreaField({ label, required, error, id, className, ...props }: TextAreaFieldProps) {
+export function TextAreaField({ label, required, error, hint, id, className, ...props }: TextAreaFieldProps) {
   return (
     <div className={className}>
       <FieldLabel htmlFor={id} required={required}>
@@ -139,6 +140,7 @@ export function TextAreaField({ label, required, error, id, className, ...props 
         className={cx(controlClasses(!!error), 'h-auto min-h-[88px] resize-y py-2.5')}
         {...props}
       />
+      {hint && <p className="mt-1 text-xs text-ink-soft">{hint}</p>}
       <FieldError message={error} />
     </div>
   )

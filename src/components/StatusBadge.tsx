@@ -1,10 +1,12 @@
 import { cx } from '../utils'
 
-type Status = 'active' | 'inactive'
+type Status = 'active' | 'inactive' | 'draft' | 'published'
 
 const statusStyles: Record<Status, { className: string; label: string }> = {
   active: { className: 'bg-[#DCFCE7] text-[#15803D]', label: 'Active' },
   inactive: { className: 'bg-[#F3F4F6] text-[#6B7280]', label: 'Inactive' },
+  draft: { className: 'bg-[#FEF3C7] text-[#92400E]', label: 'Draft' },
+  published: { className: 'bg-[#DCFCE7] text-[#15803D]', label: 'Published' },
 }
 
 interface StatusBadgeProps {

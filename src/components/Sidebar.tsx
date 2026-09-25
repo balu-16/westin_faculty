@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
+import { PanelLeftClose, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import westinLogo from '../assets/images/westin-logo.avif'
 import { ProfileCard } from './ProfileCard'
@@ -49,7 +49,7 @@ function SidebarContent({
       groups = [
         { label: 'Overview', items: pick(['/admin']) },
         { label: 'Management', items: pick(['/admin/teachers', '/admin/students', '/admin/sections', '/admin/timetable']) },
-        { label: 'Content', items: pick(['/admin/events', '/admin/materials', '/admin/reports']) },
+        { label: 'Content', items: pick(['/admin/events', '/admin/materials', '/admin/reports', '/admin/website', '/admin/enquiries']) },
         { label: 'Account', items: pick(['/admin/settings']) },
       ].filter((g) => g.items.length > 0)
     } else {
@@ -82,18 +82,39 @@ function SidebarContent({
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-      {/* Header */}
+      {/* Header — ChatGPT-style: logo opens when collapsed, toggle button only closes */}
       <div className={cx('relative flex shrink-0 items-center', collapsed ? 'justify-center px-2 py-3' : 'gap-3 px-4 pt-4 pb-3')}>
-        <div className="shrink-0 rounded-xl bg-white p-1.5 shadow-[0_4px_14px_rgba(12,64,115,0.18)]">
-          <img
-            src={westinLogo}
-            width={575}
-            height={294}
-            decoding="async"
-            alt="Westin College"
-            className={cx('block h-auto object-contain', collapsed ? 'w-8' : 'w-9')}
-          />
-        </div>
+        {collapsed && onToggleCollapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label="Open sidebar"
+            title="Open sidebar"
+            className="cursor-pointer rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+          >
+            <span className="block shrink-0 rounded-xl bg-white p-1.5 shadow-[0_4px_14px_rgba(12,64,115,0.18)] transition-transform duration-200 hover:scale-[1.04]">
+              <img
+                src={westinLogo}
+                width={575}
+                height={294}
+                decoding="async"
+                alt="Westin College"
+                className="block h-auto w-8 object-contain"
+              />
+            </span>
+          </button>
+        ) : (
+          <div className="shrink-0 rounded-xl bg-white p-1.5 shadow-[0_4px_14px_rgba(12,64,115,0.18)]">
+            <img
+              src={westinLogo}
+              width={575}
+              height={294}
+              decoding="async"
+              alt="Westin College"
+              className={cx('block h-auto object-contain', collapsed ? 'w-8' : 'w-9')}
+            />
+          </div>
+        )}
 
         {!collapsed && (
           <>
@@ -105,26 +126,14 @@ function SidebarContent({
               <button
                 type="button"
                 onClick={onToggleCollapsed}
-                aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                title={collapsed ? 'Expand' : 'Collapse'}
+                aria-label="Close sidebar"
+                title="Close sidebar"
                 className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-white backdrop-blur-sm transition-colors hover:bg-white/16 lg:flex"
               >
                 <PanelLeftClose size={16} aria-hidden="true" />
               </button>
             )}
           </>
-        )}
-
-        {collapsed && onToggleCollapsed && (
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            aria-label="Expand sidebar"
-            title="Expand sidebar"
-            className="absolute right-1.5 top-1.5 hidden h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-ink-soft shadow-md transition-colors hover:text-primary lg:flex"
-          >
-            <PanelLeftOpen size={12} aria-hidden="true" />
-          </button>
         )}
       </div>
 

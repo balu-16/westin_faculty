@@ -1,0 +1,33 @@
+.wm-mascot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wm-upper-body {
+  transform-origin: 130px 211px;
+}
+
+.wm-pulling:not(.wm-reduced-motion) .wm-upper-body {
+  animation: wm-pull-effort 760ms ease-in-out infinite;
+}
+
+@keyframes wm-pull-effort {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-1.2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wm-pulling .wm-upper-body {
+    animation: none;
+  }
+}
+
